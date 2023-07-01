@@ -1,0 +1,7 @@
+/.env
+*.log
+/.venv
+/data
+*__pycache__
+*.ipynb
+*.DS_Store
