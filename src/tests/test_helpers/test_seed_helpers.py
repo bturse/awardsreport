@@ -1,4 +1,5 @@
 from awardsreport.helpers.seed_helpers import get_date_ranges
+from pprint import pprint
 
 
 def test_get_date_ranges(db_session):
@@ -16,3 +17,6 @@ def test_get_date_ranges(db_session):
         ("2016-03-01", "2016-03-31"),
     ]
     assert result == expected_result
+
+
+pprint(get_date_ranges(2016, 2, 48, period_months=2))

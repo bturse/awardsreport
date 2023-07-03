@@ -3,23 +3,29 @@ from collections import namedtuple
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 import logging
+from sqlalchemy import case, update
 
-logging.basicConfig(filename=f"{__name__}.log", level=logging.INFO)
-# https://stackoverflow.com/a/64522240/15363595
+logging.basicConfig(
+    filename=f"{__name__}.log",
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(filename)s - %(funcName)s - %(lineno)d  %(message)s",
+)
+
 TODAY = date.today()
 YEAR = TODAY.year
-MONTH = TODAY.month
+MONTH = TODAY.month - 1
 
 file_types = Literal["assistance", "procurement"]
 VALID_FILE_TYPES: Tuple[file_types, ...] = get_args(file_types)
 
 USER_AGENT = {"User-Agent": "Mozilla/5.0"}
 
+
 ASSISTANCE_COLS = [
     "action_date",
     "assistance_award_unique_key",
     "assistance_transaction_unique_key",
-    "assistance_type_description",
+    "assistance_type_code",
     "awarding_agency_code",
     "awarding_agency_name",
     "awarding_office_code",
@@ -38,6 +44,7 @@ ASSISTANCE_COLS = [
     "prime_award_transaction_place_of_performance_county_fips_code",
     "prime_award_transaction_place_of_performance_state_fips_code",
 ]
+
 
 PROCUREMENT_COLS = [
     "action_date",
@@ -87,32 +94,12 @@ PRIME_AWARD_TYPES = [
 AWARDS_DL_EP = "https://api.usaspending.gov/api/v2/bulk_download/awards/"
 
 
-# def get_date_ranges(year: int, month: int):
-#    """Get YYYY-mm-dd string for start, mid date, mid morrow date, and end dates for preceding 24 month range, given month and year.
-#
-#    Mid dates are necessary since the endpoint that will use these date ranges only supports 1 year of data per request.
-#
-#    args
-#        year int end of range year.
-#        month int end of range month
-#
-#    return collections.namedtuple DateRange(start_date, mid_date, mid_morrow_date, end_date)
-#    """
-#    DateRange = namedtuple("DateRange", "start_date mid_date mid_morrow_date end_date")
-#    start_date = date(year=year - 2, month=month + 1, day=1)
-#    end_date = date(year, month, 1) + relativedelta(months=1) - relativedelta(days=1)
-#    mid_date = start_date + relativedelta(years=1) - relativedelta(days=1)
-#    #    mid_date = start_date + (end_date - start_date) / 2
-#    mid_morrow_date = mid_date + relativedelta(days=1)
-#    return DateRange(
-#        *map(
-#            lambda d: d.strftime("%Y-%m-%d"),
-#            [start_date, mid_date, mid_morrow_date, end_date],
-#        )
-#    )
-
-
-def get_date_ranges(year: int, month: int, no_months: int):
+def get_date_ranges(
+    year: int,
+    month: int,
+    no_months: int,
+    period_months: int = 12,
+):
     """Get list of date ranges for start_date and end_date parameters for
     api/v2/bulk_downloads/awards.
 
@@ -138,16 +125,22 @@ def get_date_ranges(year: int, month: int, no_months: int):
     ymd = "%Y-%m-%d"
     end_date = date(year, month, 1) + relativedelta(months=1) - relativedelta(days=1)
     start_date = end_date + relativedelta(days=1) - relativedelta(months=no_months)
-    current_end = start_date + relativedelta(years=1) - relativedelta(days=1)
+    #    current_end = start_date + relativedelta(years=1) - relativedelta(days=1)
+    current_end = (
+        start_date + relativedelta(months=period_months) - relativedelta(days=1)
+    )
     while current_end < end_date:
         date_ranges.append((start_date.strftime(ymd), current_end.strftime(ymd)))
         start_date = current_end + relativedelta(days=1)
-        current_end = current_end + relativedelta(years=1) - relativedelta(days=1)
+        #        current_end = current_end + relativedelta(years=1) - relativedelta(days=1)
+        current_end = (
+            start_date + relativedelta(months=period_months) - relativedelta(days=1)
+        )
     date_ranges.append((start_date.strftime(ymd), end_date.strftime(ymd)))
     return date_ranges
 
 
-def get_awards_payloads(year, month, no_months):
+def get_awards_payloads(year, month, no_months, period_months):
     """Generate payloads for USAs awards download for full months no_months
     before the last day of the specified month.
 
@@ -160,7 +153,7 @@ def get_awards_payloads(year, month, no_months):
 
     returns list of dict suitable as payloads for api/v2/bulk_downloads/awards/
     """
-    date_ranges = get_date_ranges(year, month, no_months)
+    date_ranges = get_date_ranges(year, month, no_months, period_months)
     payloads = [
         {
             "columns": list(set(ASSISTANCE_COLS) | set(PROCUREMENT_COLS)),
@@ -177,38 +170,12 @@ def get_awards_payloads(year, month, no_months):
     return payloads
 
 
-def get_ep_split_award_payloads(year, month):
-    pass
-    """Get payloads with contiguous start and end dates for 24 month period.
-
-    This is necessary since the api/v2/bulk_downloads/awards/ endpoint only
-    accepts date ranges within a single year.
-
-    args:
-        year int
-        month int
-
-    returns dict with keys "endpoint" and "payloads."
-    """
-    start_date, mid_date, mid_morrow_date, end_date = get_date_ranges(year, month)
-    return {
-        "endpoint": AWARDS_DL_EP,
-        "payloads": (
-            # get_awards_payload(start_date, mid_date),
-            # get_awards_payload(mid_morrow_date, end_date),
-        ),
-    }
-
-
-def generate_copy_from_sql(file_type: file_types):
+def generate_copy_from_sql(fname):
     """generate sql command to insert payload columns to table_name"""
-    valid_file_types = ["assistance", "procurement"]
-    if file_type not in VALID_FILE_TYPES:
-        raise ValueError(f"file_type must be in {VALID_FILE_TYPES}")
-    if file_type == "assistance":
+    if "Assistance" in fname:
         cols = ", ".join(ASSISTANCE_COLS)
         table_name = "assistance_transactions"
-    elif file_type == "procurement":
+    elif "Contract" in fname:
         cols = ", ".join(PROCUREMENT_COLS)
         table_name = "procurement_transactions"
     return f"COPY {table_name}({cols}) FROM STDIN WITH (FORMAT CSV, HEADER)"

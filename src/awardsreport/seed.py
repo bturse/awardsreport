@@ -7,7 +7,7 @@ import tempfile
 import logging
 
 from awardsreport.database import engine, Base
-from awardsreport.models import Transactions, AssistanceTransactions
+from awardsreport.models import ProcurementTransactions, AssistanceTransactions
 from awardsreport.helpers.seed_helpers import (
     get_awards_payloads,
     generate_copy_from_sql,
@@ -20,12 +20,12 @@ from awardsreport.helpers.seed_helpers import (
 logging.basicConfig(
     filename=f"{__name__}.log",
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    format="%(asctime)s - %(name)s - %(levelname)s - %(filename)s - %(funcName)s - %(lineno)d  %(message)s",
 )
 
 
 # this function could be optimized by initiating all downloads at once.
-def awards_usas_to_sql(year, month, no_months):
+def awards_usas_to_sql(year, month, no_months, period_months=12):
     """Download all awards data in range from USAspending to sql.
 
     args
@@ -35,71 +35,58 @@ def awards_usas_to_sql(year, month, no_months):
 
     return None
     """
-    logging.info("entering awards_24_mo_usas_to_sql")
 
-    payloads = get_awards_payloads(year, month, no_months)
-    logging.info("set up ep and payloads")
+    def get_status(status_url):
+        return requests.get(status_url, headers=USER_AGENT).json()["status"]
+
+    payloads = get_awards_payloads(year, month, no_months, period_months)
+    logging.info(
+        f"payload filter date ranges: {[payload['filters']['date_range'] for payload in payloads]}"
+    )
 
     conn = engine.raw_connection()
     cursor = conn.cursor()
-    logging.info("set up conn and cursor")
-    logging.info(conn)
-    logging.info(cursor)
+    logging.info(f"conn: {conn}")
+    logging.info(f"cursor: {conn}")
 
     for payload in payloads:
-        logging.info("processing payloads")
-        r = requests.post(AWARDS_DL_EP, json=payload, headers=USER_AGENT).json()[
-            "status_url"
-        ]
-        logging.info(r.text)
-        logging.info("payload response:")
-        logging.info(r)
-        status_url = r["status_url"]
-        status = requests.get(status_url, headers=USER_AGENT).json()["status"]
+        r = requests.post(AWARDS_DL_EP, json=payload, headers=USER_AGENT).json()
+        logging.info(f"date_range: [{payload['filters']['date_range']}]")
+        logging.info(f"file_url: {r['file_url']}")
+        logging.info(f"status_url: {r['status_url']}")
+        status = get_status(r["status_url"])
         logging.info(f"status: {status}")
-        logging.info("beginning status check while loop")
+        logging.info("entering request rest loop")
         while status not in ("failed", "finished"):
-            logging.info(f"starting status: {status}")
-            sleep(120)
-            status = requests.get(status_url, headers=USER_AGENT).json()["status"]
-            logging.info(f"ending status: {status}")
-        logging.info("breaking from status check while loop")
+            sleep(300)
+            status = get_status(r["status_url"])
 
         if status == "failed":
             logging.error("status == 'failed' raising Exception('download failed')")
             raise Exception("download failed")
         if status == "finished":
-            logging.info("status == 'finished'")
-            logging.info(f"requesting file: {r['file_url']}")
+            logging.info(f"status: {status}")
+            logging.info(f"requesting: {r['file_url']}")
             file = requests.get(r["file_url"], stream=True)
-            logging.info(f"file url: {file}")
 
         with tempfile.TemporaryDirectory() as raw_data:
-            logging.info("creating TemporaryDirectory")
-            logging.info(raw_data)
-            with ZipFile(StringIO(file.content), "r") as zip_ref:
+            logging.info(f"temp: {raw_data}")
+            with ZipFile(BytesIO(file.content), "r") as zip_ref:
                 logging.info("extracting zip data")
                 zip_ref.extractall(raw_data)
                 files = glob("*.csv", root_dir=raw_data)
-                logging.info("processing files")
-                logging.info(files)
+                logging.info(f"files: {files}")
                 for file in files:
-                    logging.info(f"processing file: {file}")
-                    if "Assistance" in file:
-                        logging.info("assistance file")
-                        cmd = generate_copy_from_sql("assistance")
-                    if "Contract" in file:
-                        logging.info("contract file")
-                        cmd = generate_copy_from_sql("procurement")
+                    logging.info(f"file: {file}")
+                    copy_cmd = generate_copy_from_sql(file)
+                    #                    if "Assistance" in file:
+                    #                        copy_cmd = generate_copy_from_sql("assistance")
+                    #                    if "Contract" in file:
+                    #                        copy_cmd = generate_copy_from_sql("procurement")
 
-                    logging.info(f"command: {cmd}")
-                    path = f"{raw_data}/{file}"
-                    logging.info(f"file path: {path}")
-                    with open(path, "r") as f:
-                        logging.info(f"opening file: {path}")
-                        logging.info("running copy_expert")
-                        cursor.copy_expert(cmd, f)
-                        logging.info("copy_expert completed")
+                    logging.info(f"copy_cmd: {copy_cmd}")
+                    with open(f"{raw_data}/{file}", "r") as f:
+                        cursor.copy_expert(copy_cmd, f)
                         conn.commit()
                         logging.info("commit completed")
 
@@ -109,4 +96,5 @@ if __name__ == "__main__":
     logging.info("dropped metadata")
     Base.metadata.create_all(engine)
     logging.info("created metadata")
-    awards_usas_to_sql(YEAR, MONTH - 1, 13)
+    #    awards_usas_to_sql(YEAR, MONTH - 1, 1, 1)
+    awards_usas_to_sql(YEAR, MONTH, 13, 4)
