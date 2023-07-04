@@ -40,7 +40,6 @@ class AssistanceTransactions(Base):
     prime_award_transaction_place_of_performance_state_fips_code = mapped_column(
         String(2)
     )
-    spending_amount = mapped_column(Float)
 
 
 class ProcurementTransactions(Base):
