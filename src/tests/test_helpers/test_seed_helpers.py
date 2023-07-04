@@ -2,7 +2,7 @@ from awardsreport.helpers.seed_helpers import get_date_ranges
 from pprint import pprint
 
 
-def test_get_date_ranges(db_session):
+def test_get_date_ranges():
     # test simple default
     result = get_date_ranges(2010, 1)
     expected_result = [
@@ -20,10 +20,7 @@ def test_get_date_ranges(db_session):
 
     # test < 12 months spanning across years
     result = get_date_ranges(2010, 1, 4)
-    expected_result = [
-        ("2009-01-01", "2009-12-31"),
-        ("2010-01-01", "2010-01-31"),
-    ]
+    expected_result = [("2009-10-01", "2010-01-31")]
     assert result == expected_result
 
     # test leap year on non middle tuple
@@ -39,3 +36,8 @@ def test_get_date_ranges(db_session):
         ("2013-09-01", "2014-02-28"),
     ]
     assert result == expected_result
+
+
+pprint(get_date_ranges(2010, 1, 4))
+
+# def test_generate_copy_from_sql()
