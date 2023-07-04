@@ -79,10 +79,6 @@ def awards_usas_to_sql(year, month, no_months, period_months=12):
                 for file in files:
                     logging.info(f"file: {file}")
                     copy_cmd = generate_copy_from_sql(file)
-                    #                    if "Assistance" in file:
-                    #                        copy_cmd = generate_copy_from_sql("assistance")
-                    #                    if "Contract" in file:
-                    #                        copy_cmd = generate_copy_from_sql("procurement")
 
                     logging.info(f"copy_cmd: {copy_cmd}")
                     with open(f"{raw_data}/{file}", "r") as f:
@@ -96,5 +92,4 @@ if __name__ == "__main__":
     logging.info("dropped metadata")
     Base.metadata.create_all(engine)
     logging.info("created metadata")
-    #    awards_usas_to_sql(YEAR, MONTH - 1, 1, 1)
     awards_usas_to_sql(YEAR, MONTH, 13, 4)

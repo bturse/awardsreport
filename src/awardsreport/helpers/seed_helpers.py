@@ -97,7 +97,7 @@ AWARDS_DL_EP = "https://api.usaspending.gov/api/v2/bulk_download/awards/"
 def get_date_ranges(
     year: int,
     month: int,
-    no_months: int,
+    no_months: int = 13,
     period_months: int = 12,
 ):
     """Get list of date ranges for start_date and end_date parameters for
@@ -114,13 +114,18 @@ def get_date_ranges(
     args
         year int the last year of the last date range.
         month int the last month of the last date range.
-        no_months int the number of months prior of the first date.
+        no_months int the number of months prior of the first date, default 13
+        period_months int maximum number of months between dates in tuple,
+        default 12
 
     raises
         ValueError if no_months <= 0
+        ValueError if period_months > 12
     """
     if no_months <= 0:
         raise ValueError("no_months must be greater than 0.")
+    if period_months > 12:
+        raise ValueError("period_months must be <= 12")
     date_ranges = []
     ymd = "%Y-%m-%d"
     end_date = date(year, month, 1) + relativedelta(months=1) - relativedelta(days=1)
