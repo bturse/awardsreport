@@ -1,9 +1,10 @@
-from typing import Literal, get_args, Tuple
 from collections import namedtuple
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
-import logging
+from enum import Enum
 from sqlalchemy import case, update
+from typing import Literal, get_args, Tuple, Dict, List
+import logging
 
 logging.basicConfig(
     filename=f"{__name__}.log",
@@ -175,12 +176,47 @@ def get_awards_payloads(year, month, no_months, period_months):
     return payloads
 
 
-def generate_copy_from_sql(fname):
-    """generate sql command to insert payload columns to table_name"""
+TestColsType = Dict[str, List[str]] | None
+
+
+def generate_copy_from_sql(fname: str, test_cols: TestColsType = None) -> str:
+    """Generate sql COPY FROM command to insert to psql.
+
+    If fname contains 'Assistance' insert into assistance_transactions.
+    If fname contains 'Contract' insert into procurement_transactions.
+
+    args
+        fname str file name to insert
+        test_cols TestColsType COPY columns to simplify testing. Users should
+        not need to interact with this parameter.
+
+    return str valid postgresql COPY FROM statement to insert data from fname to appropriate table.
+
+    raises
+        ValueError if provided test_col keys are not exactly 'asst_cols' and 'proc_cols'.
+        ValueError if fname does not inclue 'Assistance' or 'Contract'
+    """
+    if test_cols:
+        valid_keys = {"asst_cols", "proc_cols"}
+        test_col_keys = test_cols.keys()
+        if set(test_col_keys) != (valid_keys):
+            raise ValueError(
+                f"invalid test_cols keys: {test_col_keys}. test_col keys must be 'asst_cols' and 'proc_cols'"
+            )
+        asst_cols = test_cols["asst_cols"]
+        proc_cols = test_cols["proc_cols"]
+    else:
+        asst_cols = ASSISTANCE_COLS
+        proc_cols = PROCUREMENT_COLS
+
     if "Assistance" in fname:
-        cols = ", ".join(ASSISTANCE_COLS)
+        cols = ", ".join(asst_cols)
         table_name = "assistance_transactions"
     elif "Contract" in fname:
-        cols = ", ".join(PROCUREMENT_COLS)
+        cols = ", ".join(proc_cols)
         table_name = "procurement_transactions"
+    else:
+        raise ValueError(
+            f"invalid fname: {fname}. fname must include substring 'Assistance' or 'Contract'"
+        )
     return f"COPY {table_name}({cols}) FROM STDIN WITH (FORMAT CSV, HEADER)"

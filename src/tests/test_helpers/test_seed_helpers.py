@@ -1,4 +1,5 @@
-from awardsreport.helpers.seed_helpers import get_date_ranges
+import pytest
+from awardsreport.helpers.seed_helpers import get_date_ranges, generate_copy_from_sql
 from pprint import pprint
 
 
@@ -38,6 +39,20 @@ def test_get_date_ranges():
     assert result == expected_result
 
 
-pprint(get_date_ranges(2010, 1, 4))
-
-# def test_generate_copy_from_sql()
+def test_generate_copy_from_sql():
+    test_cols = {
+        "asst_cols": ["asst_col1", "asst_col2"],
+        "proc_cols": ["proc_col1", "proc_col2"],
+    }
+    result = generate_copy_from_sql("Assistance_1.csv", test_cols)
+    expected_result = "COPY assistance_transactions(asst_col1, asst_col2) FROM STDIN WITH (FORMAT CSV, HEADER)"
+    assert result == expected_result
+    result = generate_copy_from_sql("Contract_1.csv", test_cols)
+    expected_result = "COPY procurement_transactions(proc_col1, proc_col2) FROM STDIN WITH (FORMAT CSV, HEADER)"
+    assert result == expected_result
+    # test file name exception
+    with pytest.raises(ValueError):
+        generate_copy_from_sql("invalid_fname")
+    # test test_cols keys exception
+    with pytest.raises(ValueError):
+        generate_copy_from_sql("Assistance", {"invalid_key": ["foo"]})
