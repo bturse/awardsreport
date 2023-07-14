@@ -92,4 +92,4 @@ if __name__ == "__main__":
     logging.info("dropped metadata")
     Base.metadata.create_all(engine)
     logging.info("created metadata")
-    awards_usas_to_sql(YEAR, MONTH, 13, 4)
+    awards_usas_to_sql(YEAR, MONTH, 1, 1)
