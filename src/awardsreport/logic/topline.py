@@ -38,13 +38,14 @@ def get_award_type_month_total(
     }
     sum_col = type_cols[award_type]
     sum_tbl = sum_col.parent.class_
-
     stmt = select(func.sum(sum_col)).filter(
         extract("year", sum_tbl.action_date) == year,
         extract("month", sum_tbl.action_date) == month,
     )
+    if award_type == "assistance":
+        stmt = stmt.filter(sum_tbl.assistance_type_code.not_in(("07", "08")))
     if award_type == "loan":
-        stmt = stmt.where(sum_tbl.assistance_type_code.in_(("07", "08")))
+        stmt = stmt.filter(sum_tbl.assistance_type_code.in_(("07", "08")))
     results = session.scalar(stmt)
     return results
 
