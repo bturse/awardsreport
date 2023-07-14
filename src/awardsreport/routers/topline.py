@@ -19,7 +19,7 @@ async def award_type_month_total(
     return result
 
 
-@router.get("/month_totals_2cat_award_type", response_model=MonthTotalsAwardType2Cat)
+@router.get("/month_totals_award_type_2cat", response_model=MonthTotalsAwardType2Cat)
 async def month_totals_award_type_2cat(
     db: Session = Depends(get_db), year: int = Query(...), month: int = Query(...)
 ):
