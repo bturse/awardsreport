@@ -73,27 +73,3 @@ def get_month_totals_2cat(year: int = YEAR, month: int = MONTH):
         "total": month_totals["assistance"] + month_totals["procurement"],
         "award_type_totals": month_totals,
     }
-
-
-def get_agency_obligations(record_limit: int = 3):
-    session = Session()
-    stmt = (
-        select(
-            ProcurementTransactions.awarding_agency_name,
-            func.sum(ProcurementTransactions.federal_action_obligation).label(
-                "sum_obl"
-            ),
-        )
-        .group_by(ProcurementTransactions.awarding_agency_name)
-        .order_by(desc("sum_obl"))
-        .limit(record_limit)
-    )
-    results = session.execute(stmt).all()
-    ag_ob = [
-        {
-            "awarding_agency_name": result.awarding_agency_name,
-            "sum_obl": result.sum_obl,
-        }
-        for result in results
-    ]
-    return ag_ob
