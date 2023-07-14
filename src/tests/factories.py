@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from factory import Factory
+from factory import Factory, Sequence
 import datetime
 from awardsreport.models import ProcurementTransactions, AssistanceTransactions
 from faker import Faker
@@ -7,7 +7,7 @@ from faker import Faker
 fake = Faker()
 
 
-def generate_contract_award_unique_key():
+def generate_contract_award_unique_key() -> str:
     """Generate realistic contract award unique key values.
 
     See USAspending data dictionary PrimeAwardUniqueKey
@@ -24,7 +24,7 @@ def generate_contract_award_unique_key():
     return "_".join((piid, agency_id, parent_piid, idv_agency_id))
 
 
-def generate_asisstance_award_unique_key():
+def generate_asisstance_award_unique_key() -> str:
     """Generate realistic assistance award unique key values.
 
     See USAspending data dictionary PrimeAwardUniqueKey
@@ -74,6 +74,7 @@ class AssistanceTransactionsFactory(BaseTransactionsFactory):
         model = AssistanceTransactions
 
     assistance_award_unique_key = generate_asisstance_award_unique_key()
+    assistance_transaction_unique_key = Sequence(lambda n: n)
     assistance_type_code = fake.bothify("##")
     cfda_number = fake.bothify("##.###")
     cfda_title = fake.pystr(5, 10)
@@ -87,3 +88,4 @@ class ProcurementTransactionsFactory(BaseTransactionsFactory):
         model = ProcurementTransactions
 
     contract_award_unique_key = generate_contract_award_unique_key()
+    contract_transaction_unique_key = Sequence(lambda n: n)
