@@ -1,7 +1,7 @@
-from awardsreport.database import Session
 from awardsreport.models import ProcurementTransactions, AssistanceTransactions
 from awardsreport.helpers.seed_helpers import YEAR, MONTH
-from sqlalchemy import select, func, desc, extract
+from awardsreport.schemas.topline import MonthTotalsAwardType2Cat
+from sqlalchemy import select, func, extract
 from sqlalchemy.orm import Session
 
 
@@ -50,22 +50,24 @@ def get_award_type_month_total(
     return results
 
 
-# todo: create a schema for returned object
-def get_month_totals_2cat(year: int = YEAR, month: int = MONTH):
+def get_month_totals_award_type_2cat(
+    session: Session, year: int = YEAR, month: int = MONTH
+) -> MonthTotalsAwardType2Cat:
     """Get total spending in specified year and month.
 
     args:
+        session sqlalchemy.orm.Session
         year int year of spending to sum
         month int month on spending to sum
 
-    returns dict
+    returns awardsreport.schemas.topline.MonthTotalAwardType2Cat
 
 
     """
     month_totals = {
-        "assistance": get_award_type_month_total("assistance", year, month)
-        + get_award_type_month_total("loan", year, month),
-        "procurement": get_award_type_month_total("procurement", year, month),
+        "assistance": get_award_type_month_total(session, "assistance", year, month)
+        + get_award_type_month_total(session, "loan", year, month),
+        "procurement": get_award_type_month_total(session, "procurement", year, month),
     }
     return {
         "year": year,
