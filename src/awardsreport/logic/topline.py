@@ -1,7 +1,7 @@
-from awardsreport.database import Session
 from awardsreport.models import ProcurementTransactions, AssistanceTransactions
 from awardsreport.helpers.seed_helpers import YEAR, MONTH
-from sqlalchemy import select, func, desc, extract
+from awardsreport.schemas.topline import MonthTotalsAwardType2Cat
+from sqlalchemy import select, func, extract
 from sqlalchemy.orm import Session
 
 
@@ -38,33 +38,36 @@ def get_award_type_month_total(
     }
     sum_col = type_cols[award_type]
     sum_tbl = sum_col.parent.class_
-
     stmt = select(func.sum(sum_col)).filter(
         extract("year", sum_tbl.action_date) == year,
         extract("month", sum_tbl.action_date) == month,
     )
+    if award_type == "assistance":
+        stmt = stmt.filter(sum_tbl.assistance_type_code.not_in(("07", "08")))
     if award_type == "loan":
-        stmt = stmt.where(sum_tbl.assistance_type_code.in_(("07", "08")))
+        stmt = stmt.filter(sum_tbl.assistance_type_code.in_(("07", "08")))
     results = session.scalar(stmt)
     return results
 
 
-# todo: create a schema for returned object
-def get_month_totals_2cat(year: int = YEAR, month: int = MONTH):
+def get_month_totals_award_type_2cat(
+    session: Session, year: int = YEAR, month: int = MONTH
+) -> MonthTotalsAwardType2Cat:
     """Get total spending in specified year and month.
 
     args:
+        session sqlalchemy.orm.Session
         year int year of spending to sum
         month int month on spending to sum
 
-    returns dict
+    returns awardsreport.schemas.topline.MonthTotalAwardType2Cat
 
 
     """
     month_totals = {
-        "assistance": get_award_type_month_total("assistance", year, month)
-        + get_award_type_month_total("loan", year, month),
-        "procurement": get_award_type_month_total("procurement", year, month),
+        "assistance": get_award_type_month_total(session, "assistance", year, month)
+        + get_award_type_month_total(session, "loan", year, month),
+        "procurement": get_award_type_month_total(session, "procurement", year, month),
     }
     return {
         "year": year,
@@ -72,27 +75,3 @@ def get_month_totals_2cat(year: int = YEAR, month: int = MONTH):
         "total": month_totals["assistance"] + month_totals["procurement"],
         "award_type_totals": month_totals,
     }
-
-
-def get_agency_obligations(record_limit: int = 3):
-    session = Session()
-    stmt = (
-        select(
-            ProcurementTransactions.awarding_agency_name,
-            func.sum(ProcurementTransactions.federal_action_obligation).label(
-                "sum_obl"
-            ),
-        )
-        .group_by(ProcurementTransactions.awarding_agency_name)
-        .order_by(desc("sum_obl"))
-        .limit(record_limit)
-    )
-    results = session.execute(stmt).all()
-    ag_ob = [
-        {
-            "awarding_agency_name": result.awarding_agency_name,
-            "sum_obl": result.sum_obl,
-        }
-        for result in results
-    ]
-    return ag_ob

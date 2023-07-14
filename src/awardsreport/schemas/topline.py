@@ -14,3 +14,10 @@ class AwardTypeTotals2cat(BaseModel):
 class MonthTotals2cat(BaseModel):
     year: str
     month: str
+
+
+class MonthTotalsAwardType2Cat(BaseModel):
+    year: str
+    month: str
+    total: float
+    award_type_totals: AwardTypeTotals2cat
