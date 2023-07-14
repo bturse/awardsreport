@@ -1,6 +1,6 @@
 black == 23.3.0
 boto3 == 1.26.155
- factory-boy == 3.2.1 
+factory-boy == 3.2.1 
 fastapi == 0.96.0
 pandas == 2.0.2
 poetry==1.5.1

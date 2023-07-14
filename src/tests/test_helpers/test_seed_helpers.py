@@ -1,6 +1,5 @@
 import pytest
 from awardsreport.helpers.seed_helpers import get_date_ranges, generate_copy_from_sql
-from pprint import pprint
 
 
 def test_get_date_ranges():

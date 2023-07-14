@@ -2,9 +2,12 @@ from awardsreport.database import Session
 from awardsreport.models import ProcurementTransactions, AssistanceTransactions
 from awardsreport.helpers.seed_helpers import YEAR, MONTH
 from sqlalchemy import select, func, desc, extract
+from sqlalchemy.orm import Session
 
 
-def get_award_type_month_total(award_type: str, year: int = YEAR, month: int = MONTH):
+def get_award_type_month_total(
+    session: Session, award_type: str, year: int = YEAR, month: int = MONTH
+) -> float:
     """Get the sum of the specified award type spending in the specified year and month.
 
     Loan spending is measures with original loan subsidy cost. Non-loan
@@ -12,6 +15,7 @@ def get_award_type_month_total(award_type: str, year: int = YEAR, month: int = M
     action obligation.
 
     args:
+        session sqlalchemy.orm.Session
         award_type str type of award spending to sum. One of 'assistance,'
         'loan,' or 'procurement.' If assistance, sum non-loan assistance
         obligations. If loan, sum loan subsidy cost. If procurement sum
@@ -24,10 +28,9 @@ def get_award_type_month_total(award_type: str, year: int = YEAR, month: int = M
     raises
         ValueError if sum_col not in: 'assistance,' 'loan,' 'procurement'
     """
-    if award_type not in ("assistance," "loan," "procurement"):
+    if award_type not in ("assistance", "loan", "procurement"):
         raise ValueError("award_type must be one of: assistance, loan, or procurement")
 
-    session = Session()
     type_cols = {
         "assistance": AssistanceTransactions.federal_action_obligation,
         "loan": AssistanceTransactions.original_loan_subsidy_cost,
@@ -47,7 +50,7 @@ def get_award_type_month_total(award_type: str, year: int = YEAR, month: int = M
 
 
 # todo: create a schema for returned object
-def get_month_totals(year: int = YEAR, month: int = MONTH):
+def get_month_totals_2cat(year: int = YEAR, month: int = MONTH):
     """Get total spending in specified year and month.
 
     args:
@@ -59,16 +62,14 @@ def get_month_totals(year: int = YEAR, month: int = MONTH):
 
     """
     month_totals = {
-        "assistance": get_award_type_month_total("assistance", year, month),
-        "loan": get_award_type_month_total("loan", year, month),
+        "assistance": get_award_type_month_total("assistance", year, month)
+        + get_award_type_month_total("loan", year, month),
         "procurement": get_award_type_month_total("procurement", year, month),
     }
     return {
         "year": year,
         "month": month,
-        "total": month_totals["assistance"]
-        + month_totals["loan"]
-        + month_totals["procurement"],
+        "total": month_totals["assistance"] + month_totals["procurement"],
         "award_type_totals": month_totals,
     }
 
