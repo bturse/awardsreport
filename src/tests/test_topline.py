@@ -1,5 +1,6 @@
 import pytest
 from awardsreport.logic import topline
+from awardsreport.database import engine
 from sqlalchemy.orm import Session
 
 from tests.factories import (
@@ -9,7 +10,7 @@ from tests.factories import (
 
 
 @pytest.fixture
-def test_data():
+def test_data() -> list[AssistanceTransactionsFactory | ProcurementTransactionsFactory]:
     return [
         AssistanceTransactionsFactory(
             federal_action_obligation=2,
@@ -49,7 +50,11 @@ def test_data():
     ]
 
 
-def test_get_award_type_month_total(db_session: Session, test_data: list):
+def test_get_award_type_month_total(
+    db_session: Session,
+    test_data: list[AssistanceTransactionsFactory | ProcurementTransactionsFactory],
+):
+    db_session.bind = engine
     db_session.add_all(test_data)
     db_session.commit()
 
@@ -66,7 +71,11 @@ def test_get_award_type_month_total(db_session: Session, test_data: list):
     assert result == expected_result
 
 
-def test_get_month_totals_award_type_2cat(db_session: Session, test_data: list):
+def test_get_month_totals_award_type_2cat(
+    db_session: Session,
+    test_data: list[AssistanceTransactionsFactory | ProcurementTransactionsFactory],
+):
+    db_session.bind = engine
     db_session.add_all(test_data)
     db_session.commit()
     result = topline.get_month_totals_award_type_2cat(db_session, 2023, 5)
