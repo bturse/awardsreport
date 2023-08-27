@@ -1,40 +1,42 @@
 from sqlalchemy import String, Float, Date
 from sqlalchemy.orm import mapped_column, Mapped
+from typing import Optional
+from datetime import date
 
-from awardsreport.database import Base
+from awardsreport.database import Base, engine
 
 
 class TransactionsMixin:
-    action_date: Mapped[Date] = mapped_column(Date)
-    awarding_agency_code: Mapped[str] = mapped_column(String)
-    awarding_agency_name: Mapped[str] = mapped_column(String)
-    federal_action_obligation = mapped_column(Float)
-    primary_place_of_performance_state_name = mapped_column(String)
-    recipient_name = mapped_column(String)
-    recipient_uei = mapped_column(String)
-    usaspending_permalink = mapped_column(String)
+    action_date: Mapped[date]
+    awarding_agency_code: Mapped[Optional[str]]
+    awarding_agency_name: Mapped[Optional[str]]
+    federal_action_obligation: Mapped[Optional[float]]
+    primary_place_of_performance_state_name: Mapped[Optional[str]]
+    recipient_name: Mapped[Optional[str]]
+    recipient_uei: Mapped[Optional[str]]
+    usaspending_permalink: Mapped[Optional[str]]
 
 
 class ProcurementTransactionsMixin:
-    contract_award_unique_key = mapped_column(String, nullable=False)
-    contract_transaction_unique_key = mapped_column(String, primary_key=True)
-    naics_code = mapped_column(String)
-    naics_description = mapped_column(String)
-    product_or_service_code = mapped_column(String)
-    product_or_service_code_description = mapped_column(String)
+    contract_award_unique_key: Mapped[str]
+    contract_transaction_unique_key: Mapped[str] = mapped_column(primary_key=True)
+    naics_code: Mapped[Optional[str]] = mapped_column(String(6))
+    naics_description: Mapped[Optional[str]]
+    product_or_service_code: Mapped[Optional[str]] = mapped_column(String(6))
+    product_or_service_code_description: Mapped[Optional[str]]
 
 
 class AssistanceTransactionsMixin:
-    assistance_award_unique_key = mapped_column(String, nullable=False)
-    assistance_transaction_unique_key = mapped_column(String, primary_key=True)
-    assistance_type_code = mapped_column(String(2))
-    cfda_number = mapped_column(String(6))
-    cfda_title = mapped_column(String)
-    original_loan_subsidy_cost = mapped_column(Float)
+    assistance_award_unique_key: Mapped[str] = mapped_column(nullable=False)
+    assistance_transaction_unique_key: Mapped[str] = mapped_column(primary_key=True)
+    assistance_type_code: Mapped[Optional[str]] = mapped_column(String(2))
+    cfda_number: Mapped[Optional[str]] = mapped_column(String(6))
+    cfda_title: Mapped[Optional[str]]
+    original_loan_subsidy_cost: Mapped[Optional[float]]
 
 
 class TransactionDerivationsMixin:
-    generated_pragmatic_obligations = mapped_column(String)
+    generated_pragmatic_obligations: Mapped[Optional[float]]
 
 
 class AssistanceTransactions(
@@ -53,3 +55,10 @@ class ProcurementTransactions(
     TransactionDerivationsMixin,  # must be inhereted last
 ):
     __tablename__ = "procurement_transactions"
+
+
+if __name__ == "__main__":
+    #    Base.metadata.create_all(bind=engine)
+    from pprint import pprint
+
+    pprint(TransactionDerivationsMixin.__annotations__.keys())
