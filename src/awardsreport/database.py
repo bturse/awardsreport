@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine, URL
-from sqlalchemy.orm import sessionmaker, declarative_base, Session
+from sqlalchemy.orm import sessionmaker, DeclarativeBase, Session
 import os
 from dotenv import load_dotenv
 from typing import Generator
@@ -7,7 +7,9 @@ from typing import Generator
 load_dotenv()
 
 
-Base = declarative_base()
+class Base(DeclarativeBase):
+    pass
+
 
 url_object: URL = URL.create(
     drivername=os.environ["DB_DRIVER"],
@@ -18,7 +20,7 @@ url_object: URL = URL.create(
     database=os.environ["DB_DATABASE"],
 )
 
-engine = create_engine(url_object)
+engine = create_engine(url_object, echo=True)
 sess = sessionmaker(bind=engine)
 
 
