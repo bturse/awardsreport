@@ -1,68 +1,59 @@
 from sqlalchemy import String, Float, Date
-from sqlalchemy.orm import mapped_column
+from sqlalchemy.orm import mapped_column, Mapped
+from typing import Optional
+from datetime import date
 
-from awardsreport.database import Base
+from awardsreport.database import Base, engine
 
 
-class AssistanceTransactions(Base):
+class TransactionsMixin:
+    action_date: Mapped[date]
+    awarding_agency_code: Mapped[Optional[str]]
+    awarding_agency_name: Mapped[Optional[str]]
+    federal_action_obligation: Mapped[Optional[float]]
+    primary_place_of_performance_state_name: Mapped[Optional[str]]
+    recipient_name: Mapped[Optional[str]]
+    recipient_uei: Mapped[Optional[str]]
+    usaspending_permalink: Mapped[Optional[str]]
+
+
+class ProcurementTransactionsMixin:
+    contract_award_unique_key: Mapped[str]
+    contract_transaction_unique_key: Mapped[str] = mapped_column(primary_key=True)
+    naics_code: Mapped[Optional[str]] = mapped_column(String(6))
+    naics_description: Mapped[Optional[str]]
+    product_or_service_code: Mapped[Optional[str]] = mapped_column(String(6))
+    product_or_service_code_description: Mapped[Optional[str]]
+
+
+class AssistanceTransactionsMixin:
+    assistance_award_unique_key: Mapped[str] = mapped_column(nullable=False)
+    assistance_transaction_unique_key: Mapped[str] = mapped_column(primary_key=True)
+    assistance_type_code: Mapped[Optional[str]] = mapped_column(String(2))
+    cfda_number: Mapped[Optional[str]] = mapped_column(String(6))
+    cfda_title: Mapped[Optional[str]]
+    original_loan_subsidy_cost: Mapped[Optional[float]]
+
+
+class TransactionDerivationsMixin:
+    generated_pragmatic_obligations: Mapped[Optional[float]]
+    action_date_month: Mapped[Optional[float]]
+    action_date_year: Mapped[Optional[float]]
+
+
+class AssistanceTransactions(
+    Base,
+    TransactionsMixin,
+    AssistanceTransactionsMixin,
+    TransactionDerivationsMixin,  # must be inhereted last
+):
     __tablename__ = "assistance_transactions"
 
-    # These columns must be declared alphabetically and match
-    # seed_helpers.ASSISTANCE_COLS in name and order.
-    # This is because the download endpoint returns columns in alphabetical
-    # order when columns are specified.
-    # This also prevents us from using a abstract class for shared columns
-    # betwenn AssistanceTransactions and ContractTransactions.
-    action_date = mapped_column(Date)
-    assistance_award_unique_key = mapped_column(String, nullable=False)
-    assistance_transaction_unique_key = mapped_column(
-        String, primary_key=True, autoincrement=False
-    )
-    assistance_type_code = mapped_column(String(2))
-    awarding_agency_code = mapped_column(String(4))
-    awarding_agency_name = mapped_column(String)
-    awarding_office_code = mapped_column(String(6))
-    awarding_office_name = mapped_column(String)
-    awarding_sub_agency_code = mapped_column(String(4))
-    awarding_sub_agency_name = mapped_column(String)
-    cfda_number = mapped_column(String(6))
-    cfda_title = mapped_column(String)
-    federal_action_obligation = mapped_column(Float)
-    original_loan_subsidy_cost = mapped_column(Float)
-    primary_place_of_performance_congressional_district = mapped_column(String)
-    primary_place_of_performance_country_code = mapped_column(String)
-    primary_place_of_performance_country_name = mapped_column(String)
-    primary_place_of_performance_county_name = mapped_column(String)
-    primary_place_of_performance_state_name = mapped_column(String)
-    prime_award_transaction_place_of_performance_county_fips_code = mapped_column(
-        String(5)
-    )
-    prime_award_transaction_place_of_performance_state_fips_code = mapped_column(
-        String(2)
-    )
 
-
-class ProcurementTransactions(Base):
+class ProcurementTransactions(
+    Base,
+    TransactionsMixin,
+    ProcurementTransactionsMixin,
+    TransactionDerivationsMixin,  # must be inhereted last
+):
     __tablename__ = "procurement_transactions"
-
-    action_date = mapped_column(Date)
-    awarding_agency_code = mapped_column(String(4))
-    awarding_agency_name = mapped_column(String)
-    awarding_office_code = mapped_column(String(6))
-    awarding_office_name = mapped_column(String)
-    awarding_sub_agency_code = mapped_column(String(4))
-    awarding_sub_agency_name = mapped_column(String)
-    contract_award_unique_key = mapped_column(String, nullable=False)
-    contract_transaction_unique_key = mapped_column(String, primary_key=True)
-    federal_action_obligation = mapped_column(Float)
-    primary_place_of_performance_congressional_district = mapped_column(String)
-    primary_place_of_performance_country_code = mapped_column(String)
-    primary_place_of_performance_country_name = mapped_column(String)
-    primary_place_of_performance_county_name = mapped_column(String)
-    primary_place_of_performance_state_name = mapped_column(String)
-    prime_award_transaction_place_of_performance_county_fips_code = mapped_column(
-        String(5)
-    )
-    prime_award_transaction_place_of_performance_state_fips_code = mapped_column(
-        String(2)
-    )

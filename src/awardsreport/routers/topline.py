@@ -4,6 +4,7 @@ from awardsreport.logic import topline
 from awardsreport.schemas.topline import MonthTotalsAwardType2Cat
 from awardsreport.database import get_db
 from sqlalchemy.orm import Session
+from typing import Annotated
 
 router = APIRouter(prefix="/topline", tags=["topline"])
 
@@ -21,7 +22,10 @@ async def award_type_month_total(
 
 @router.get("/month_totals_award_type_2cat", response_model=MonthTotalsAwardType2Cat)
 async def month_totals_award_type_2cat(
-    db: Session = Depends(get_db), year: int = Query(...), month: int = Query(...)
+    db: Annotated[Session, Depends(get_db)],
+    #    db: Session = Depends(get_db),
+    year: int = Query(...),
+    month: int = Query(...),
 ):
     result = topline.get_month_totals_award_type_2cat(db, year, month)
     return result

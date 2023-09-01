@@ -1,10 +1,13 @@
-from collections import namedtuple
-from datetime import datetime, date
+from datetime import date
 from dateutil.relativedelta import relativedelta
-from enum import Enum
-from sqlalchemy import case, update
-from typing import Literal, get_args, Tuple, Dict, List
+from typing import Literal, get_args, Tuple, Dict, List, Type
 import logging
+from awardsreport.models import (
+    AssistanceTransactions,
+    ProcurementTransactions,
+    TransactionDerivationsMixin,
+)
+
 
 logging.basicConfig(
     filename=f"{__name__}.log",
@@ -12,61 +15,12 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(filename)s - %(funcName)s - %(lineno)d  %(message)s",
 )
 
+file_types = Literal["assistance", "procurement"]
 TODAY = date.today()
 YEAR = TODAY.year
 MONTH = TODAY.month - 1
-
-file_types = Literal["assistance", "procurement"]
 VALID_FILE_TYPES: Tuple[file_types, ...] = get_args(file_types)
-
 USER_AGENT = {"User-Agent": "Mozilla/5.0"}
-
-
-ASSISTANCE_COLS = [
-    "action_date",
-    "assistance_award_unique_key",
-    "assistance_transaction_unique_key",
-    "assistance_type_code",
-    "awarding_agency_code",
-    "awarding_agency_name",
-    "awarding_office_code",
-    "awarding_office_name",
-    "awarding_sub_agency_code",
-    "awarding_sub_agency_name",
-    "cfda_number",
-    "cfda_title",
-    "federal_action_obligation",
-    "original_loan_subsidy_cost",
-    "primary_place_of_performance_congressional_district",
-    "primary_place_of_performance_country_code",
-    "primary_place_of_performance_country_name",
-    "primary_place_of_performance_county_name",
-    "primary_place_of_performance_state_name",
-    "prime_award_transaction_place_of_performance_county_fips_code",
-    "prime_award_transaction_place_of_performance_state_fips_code",
-]
-
-
-PROCUREMENT_COLS = [
-    "action_date",
-    "awarding_agency_code",
-    "awarding_agency_name",
-    "awarding_office_code",
-    "awarding_office_name",
-    "awarding_sub_agency_code",
-    "awarding_sub_agency_name",
-    "contract_award_unique_key",
-    "contract_transaction_unique_key",
-    "federal_action_obligation",
-    "primary_place_of_performance_congressional_district",
-    "primary_place_of_performance_country_code",
-    "primary_place_of_performance_country_name",
-    "primary_place_of_performance_county_name",
-    "primary_place_of_performance_state_name",
-    "prime_award_transaction_place_of_performance_county_fips_code",
-    "prime_award_transaction_place_of_performance_state_fips_code",
-]
-
 PRIME_AWARD_TYPES = [
     "A",
     "B",
@@ -91,8 +45,15 @@ PRIME_AWARD_TYPES = [
     "09",
     "11",
 ]
-
 AWARDS_DL_EP = "https://api.usaspending.gov/api/v2/bulk_download/awards/"
+
+
+def get_raw_columns(
+    table: Type[AssistanceTransactions] | Type[ProcurementTransactions],
+):
+    table_cols = table.__table__.columns.keys()
+    derived_cols = TransactionDerivationsMixin.__annotations__
+    return sorted([key for key in table_cols if key not in derived_cols])
 
 
 def get_date_ranges(
@@ -131,14 +92,12 @@ def get_date_ranges(
     ymd = "%Y-%m-%d"
     end_date = date(year, month, 1) + relativedelta(months=1) - relativedelta(days=1)
     start_date = end_date + relativedelta(days=1) - relativedelta(months=no_months)
-    #    current_end = start_date + relativedelta(years=1) - relativedelta(days=1)
     current_end = (
         start_date + relativedelta(months=period_months) - relativedelta(days=1)
     )
     while current_end < end_date:
         date_ranges.append((start_date.strftime(ymd), current_end.strftime(ymd)))
         start_date = current_end + relativedelta(days=1)
-        #        current_end = current_end + relativedelta(years=1) - relativedelta(days=1)
         current_end = (
             start_date + relativedelta(months=period_months) - relativedelta(days=1)
         )
@@ -162,7 +121,10 @@ def get_awards_payloads(year, month, no_months, period_months):
     date_ranges = get_date_ranges(year, month, no_months, period_months)
     payloads = [
         {
-            "columns": list(set(ASSISTANCE_COLS) | set(PROCUREMENT_COLS)),
+            "columns": list(
+                set(get_raw_columns(AssistanceTransactions))
+                | set(get_raw_columns(ProcurementTransactions))
+            ),
             "filters": {
                 "prime_award_types": PRIME_AWARD_TYPES,
                 "date_type": "action_date",
@@ -176,10 +138,9 @@ def get_awards_payloads(year, month, no_months, period_months):
     return payloads
 
 
-TestColsType = Dict[str, List[str]] | None
-
-
-def generate_copy_from_sql(fname: str, test_cols: TestColsType = None) -> str:
+def generate_copy_from_sql(
+    fname: str, test_cols: Dict[str, List[str]] | None = None
+) -> str:
     """Generate sql COPY FROM command to insert to psql.
 
     If fname contains 'Assistance' insert into assistance_transactions.
@@ -206,8 +167,8 @@ def generate_copy_from_sql(fname: str, test_cols: TestColsType = None) -> str:
         asst_cols = test_cols["asst_cols"]
         proc_cols = test_cols["proc_cols"]
     else:
-        asst_cols = ASSISTANCE_COLS
-        proc_cols = PROCUREMENT_COLS
+        asst_cols = get_raw_columns(AssistanceTransactions)
+        proc_cols = get_raw_columns(ProcurementTransactions)
 
     if "Assistance" in fname:
         cols = ", ".join(asst_cols)

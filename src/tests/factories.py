@@ -49,24 +49,14 @@ class BaseTransactionsFactory(Factory):
     )
     awarding_agency_code = fake.bothify("####")
     awarding_agency_name = fake.pystr(5, 10)
-    awarding_office_code = fake.bothify("######")
-    awarding_office_name = fake.pystr(5, 10)
-    awarding_sub_agency_code = fake.bothify("####")
-    awarding_sub_agency_name = fake.pystr(5, 10)
     federal_action_obligation = fake.pyfloat(
         right_digits=2, min_value=-100, max_value=100
     )
-    primary_place_of_performance_congressional_district = (
-        f"{fake.state_abbr()} - {fake.bothify('##')}"
-    )
-    primary_place_of_performance_country_code = fake.bothify("#####")
-    primary_place_of_performance_country_name = fake.country()
-    primary_place_of_performance_county_name = fake.pystr(5, 10)
     primary_place_of_performance_state_name = fake.state()
-    prime_award_transaction_place_of_performance_county_fips_code = fake.bothify(
-        "#####"
-    )
-    prime_award_transaction_place_of_performance_state_fips_code = fake.bothify("##")
+    recipient_name = fake.pystr(5, 10)
+    recipient_uei = fake.pystr(5, 10)
+    usaspending_permalink = fake.pystr(5, 10)
+    generated_pragmatic_obligations = fake.pyfloat(right_digits=2, max_value=100)
 
 
 class AssistanceTransactionsFactory(BaseTransactionsFactory):

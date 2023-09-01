@@ -1,14 +1,15 @@
+import argparse
 import requests
 from time import sleep
 from zipfile import ZipFile
-from io import BytesIO, StringIO
+from io import BytesIO
 from glob import glob
 import tempfile
 import logging
 
 from awardsreport.database import engine, Base
 from awardsreport.models import ProcurementTransactions, AssistanceTransactions
-from awardsreport.helpers.seed_helpers import (
+from awardsreport.setup.seed_helpers import (
     get_awards_payloads,
     generate_copy_from_sql,
     YEAR,
@@ -67,29 +68,34 @@ def awards_usas_to_sql(year, month, no_months, period_months=12):
         if status == "finished":
             logging.info(f"status: {status}")
             logging.info(f"requesting: {r['file_url']}")
-            file = requests.get(r["file_url"], stream=True)
+            try:
+                file = requests.get(r["file_url"], stream=True)
+                with tempfile.TemporaryDirectory() as raw_data:
+                    logging.info(f"temp: {raw_data}")
+                    with ZipFile(BytesIO(file.content), "r") as zip_ref:
+                        logging.info("extracting zip data")
+                        zip_ref.extractall(raw_data)
+                        files = glob("*.csv", root_dir=raw_data)
+                        logging.info(f"files: {files}")
+                        for file in files:
+                            logging.info(f"file: {file}")
+                            copy_cmd = generate_copy_from_sql(file)
 
-        with tempfile.TemporaryDirectory() as raw_data:
-            logging.info(f"temp: {raw_data}")
-            with ZipFile(BytesIO(file.content), "r") as zip_ref:
-                logging.info("extracting zip data")
-                zip_ref.extractall(raw_data)
-                files = glob("*.csv", root_dir=raw_data)
-                logging.info(f"files: {files}")
-                for file in files:
-                    logging.info(f"file: {file}")
-                    copy_cmd = generate_copy_from_sql(file)
-
-                    logging.info(f"copy_cmd: {copy_cmd}")
-                    with open(f"{raw_data}/{file}", "r") as f:
-                        cursor.copy_expert(copy_cmd, f)
-                        conn.commit()
-                        logging.info("commit completed")
+                            logging.info(f"copy_cmd: {copy_cmd}")
+                            with open(f"{raw_data}/{file}", "r") as f:
+                                cursor.copy_expert(copy_cmd, f)
+                                conn.commit()
+                                logging.info("commit completed")
+            except Exception:
+                raise Exception(f"Unable to import {r['file_url']}")
 
 
 if __name__ == "__main__":
-    Base.metadata.drop_all(engine)
-    logging.info("dropped metadata")
-    Base.metadata.create_all(engine)
-    logging.info("created metadata")
-    awards_usas_to_sql(YEAR, MONTH, 1, 1)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--year", type=int, default=YEAR)
+    parser.add_argument("--month", type=int, default=MONTH)
+    parser.add_argument("--no_months", type=int, default=13)
+    parser.add_argument("--period_months", type=int, default=12)
+    args = parser.parse_args()
+    awards_usas_to_sql(args.year, args.month, args.no_months, args.period_months)
+#    awards_usas_to_sql(YEAR, MONTH, 1, 1)

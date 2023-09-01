@@ -1,5 +1,5 @@
 from awardsreport.models import ProcurementTransactions, AssistanceTransactions
-from awardsreport.helpers.seed_helpers import YEAR, MONTH
+from awardsreport.setup.seed_helpers import YEAR, MONTH
 from awardsreport.schemas.topline import MonthTotalsAwardType2Cat
 from sqlalchemy import select, func, extract
 from sqlalchemy.orm import Session
