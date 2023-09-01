@@ -1,8 +1,8 @@
-"""create transaction tables
+"""Create transaction tables
 
-Revision ID: 57f74fe1c3e7
+Revision ID: 25d4f7b1a272
 Revises: 
-Create Date: 2023-08-27 13:33:39.245611
+Create Date: 2023-08-31 13:26:51.389690
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '57f74fe1c3e7'
+revision: str = '25d4f7b1a272'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -36,6 +36,8 @@ def upgrade() -> None:
     sa.Column('cfda_title', sa.String(), nullable=True),
     sa.Column('original_loan_subsidy_cost', sa.Float(), nullable=True),
     sa.Column('generated_pragmatic_obligations', sa.Float(), nullable=True),
+    sa.Column('action_date_month', sa.Float(), nullable=True),
+    sa.Column('action_date_year', sa.Float(), nullable=True),
     sa.PrimaryKeyConstraint('assistance_transaction_unique_key')
     )
     op.create_table('procurement_transactions',
@@ -54,6 +56,8 @@ def upgrade() -> None:
     sa.Column('product_or_service_code', sa.String(length=6), nullable=True),
     sa.Column('product_or_service_code_description', sa.String(), nullable=True),
     sa.Column('generated_pragmatic_obligations', sa.Float(), nullable=True),
+    sa.Column('action_date_month', sa.Float(), nullable=True),
+    sa.Column('action_date_year', sa.Float(), nullable=True),
     sa.PrimaryKeyConstraint('contract_transaction_unique_key')
     )
     # ### end Alembic commands ###
