@@ -1,14 +1,15 @@
+import argparse
 import requests
 from time import sleep
 from zipfile import ZipFile
-from io import BytesIO, StringIO
+from io import BytesIO
 from glob import glob
 import tempfile
 import logging
 
 from awardsreport.database import engine, Base
 from awardsreport.models import ProcurementTransactions, AssistanceTransactions
-from awardsreport.seed_helpers import (
+from awardsreport.setup.seed_helpers import (
     get_awards_payloads,
     generate_copy_from_sql,
     YEAR,
@@ -90,4 +91,11 @@ def awards_usas_to_sql(year, month, no_months, period_months=12):
 
 
 if __name__ == "__main__":
-    awards_usas_to_sql(YEAR, MONTH, 1, 1)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--year", type=int, default=YEAR)
+    parser.add_argument("--month", type=int, default=MONTH)
+    parser.add_argument("--no_months", type=int, default=13)
+    parser.add_argument("--period_months", type=int, default=12)
+    args = parser.parse_args()
+    awards_usas_to_sql(args.year, args.month, args.no_months, args.period_months)
+#    awards_usas_to_sql(YEAR, MONTH, 1, 1)

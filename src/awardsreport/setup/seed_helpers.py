@@ -181,10 +181,3 @@ def generate_copy_from_sql(
             f"invalid fname: {fname}. fname must include substring 'Assistance' or 'Contract'"
         )
     return f"COPY {table_name}({cols}) FROM STDIN WITH (FORMAT CSV, HEADER)"
-
-
-if __name__ == "__main__":
-    from pprint import pprint
-
-    pprint(get_raw_columns(AssistanceTransactions))
-#    pprint(get_awards_payloads(2023, 7, 1, 1))
