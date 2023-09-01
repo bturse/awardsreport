@@ -37,6 +37,8 @@ class AssistanceTransactionsMixin:
 
 class TransactionDerivationsMixin:
     generated_pragmatic_obligations: Mapped[Optional[float]]
+    action_date_month: Mapped[Optional[float]]
+    action_date_year: Mapped[Optional[float]]
 
 
 class AssistanceTransactions(
@@ -55,10 +57,3 @@ class ProcurementTransactions(
     TransactionDerivationsMixin,  # must be inhereted last
 ):
     __tablename__ = "procurement_transactions"
-
-
-if __name__ == "__main__":
-    #    Base.metadata.create_all(bind=engine)
-    from pprint import pprint
-
-    pprint(TransactionDerivationsMixin.__annotations__.keys())
