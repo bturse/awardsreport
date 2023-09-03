@@ -37,8 +37,9 @@ class AssistanceTransactionsMixin:
 
 class TransactionDerivationsMixin:
     generated_pragmatic_obligations: Mapped[Optional[float]]
-    action_date_month: Mapped[Optional[float]]
-    action_date_year: Mapped[Optional[float]]
+    action_date_month: Mapped[Optional[int]]
+    action_date_year: Mapped[Optional[int]]
+    award_summary_unique_key: Mapped[Optional[str]]
 
 
 class AssistanceTransactions(
@@ -57,3 +58,17 @@ class ProcurementTransactions(
     TransactionDerivationsMixin,  # must be inhereted last
 ):
     __tablename__ = "procurement_transactions"
+
+
+if __name__ == "__main__":
+    from sqlalchemy import select
+
+    def str_to_col(tbl, str_cols: list[str] | str) -> list:
+        return [
+            col for col in tbl.__table__.columns if str(col).split(".")[1] in str_cols
+        ]
+
+    cols = ["cfda_number", "cfda_title"]
+
+    stmt = select(*str_to_col(AssistanceTransactions, cols))
+    print(stmt)
