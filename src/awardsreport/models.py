@@ -1,9 +1,9 @@
-from sqlalchemy import String, Float, Date
+from sqlalchemy import String
 from sqlalchemy.orm import mapped_column, Mapped
 from typing import Optional
 from datetime import date
 
-from awardsreport.database import Base, engine
+from awardsreport.database import Base
 
 
 class TransactionsMixin:
@@ -58,17 +58,3 @@ class ProcurementTransactions(
     TransactionDerivationsMixin,  # must be inhereted last
 ):
     __tablename__ = "procurement_transactions"
-
-
-if __name__ == "__main__":
-    from sqlalchemy import select
-
-    def str_to_col(tbl, str_cols: list[str] | str) -> list:
-        return [
-            col for col in tbl.__table__.columns if str(col).split(".")[1] in str_cols
-        ]
-
-    cols = ["cfda_number", "cfda_title"]
-
-    stmt = select(*str_to_col(AssistanceTransactions, cols))
-    print(stmt)
