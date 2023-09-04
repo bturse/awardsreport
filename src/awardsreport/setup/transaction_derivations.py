@@ -15,8 +15,6 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(filename)s - %(funcName)s - %(lineno)d  %(message)s",
 )
 
-session = sess()
-
 
 def set_generated_pragmatic_obligations(
     table: Type[AssistanceTransactions] | Type[ProcurementTransactions],
@@ -114,7 +112,7 @@ def set_award_summary_unique_key(
 
 if __name__ == "__main__":
     session = sess()
-    with sess.begin():
+    with session.begin():
         session.execute(set_generated_pragmatic_obligations(AssistanceTransactions))
         session.execute(set_generated_pragmatic_obligations(ProcurementTransactions))
 
