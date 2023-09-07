@@ -15,8 +15,6 @@ router = APIRouter(prefix="/summary_tables")
 @router.get("/")
 async def create_summary_table(
     db: Session = Depends(get_db),
-    # need to figure out how to pass list as query param:
-    # https://fastapi.tiangolo.com/tutorial/query-params-str-validations/
     gb: Annotated[list[str] | None, Query()] = None,
     sum_col: str | None = Query(None),
     y: int | None = Query(None),
