@@ -3,9 +3,11 @@ from typing import Optional, Any, Literal
 from sqlalchemy.orm import Session, Mapped
 from awardsreport.models import AssistanceTransactions, ProcurementTransactions
 from awardsreport.database import sess, Base
-import logging
+import logging.config
+from awardsreport import log_config
 
-logger = logging.getLogger("root")
+logging.config.dictConfig(log_config.LOGGING_CONFIG)
+logger = logging.getLogger("awardsreport")
 
 
 def str_to_col(
@@ -23,7 +25,6 @@ def str_to_col(
 
     raises ValueError table must be either 'assistance_transactions' or 'procurement_transactions'
     """
-    logger.info(f"cols: {cols}")
     if table == "assistance_transactions":
         _table = AssistanceTransactions
     elif table == "procurement_transactions":
