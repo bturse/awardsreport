@@ -6,14 +6,13 @@ from awardsreport.models import (
     ProcurementTransactions,
 )
 from awardsreport.database import sess
-import logging
 from typing import Type
 
-logging.basicConfig(
-    filename=f"{__name__}.log",
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(filename)s - %(funcName)s - %(lineno)d  %(message)s",
-)
+import logging.config
+from awardsreport import log_config
+
+logging.config.dictConfig(log_config.LOGGING_CONFIG)
+logger = logging.getLogger("awardsreport")
 
 
 def set_generated_pragmatic_obligations(

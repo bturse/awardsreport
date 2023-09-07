@@ -4,9 +4,12 @@ from awardsreport.routers import topline, summary_tables
 from dotenv import load_dotenv
 import os
 from awardsreport.database import Session
-import logging
 
-logging.config.fileConfig("log.ini")
+import logging.config
+from awardsreport import log_config
+
+logging.config.dictConfig(log_config.LOGGING_CONFIG)
+logger = logging.getLogger("awardsreport")
 
 load_dotenv()
 

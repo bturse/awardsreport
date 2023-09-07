@@ -1,19 +1,12 @@
 from datetime import date
 from dateutil.relativedelta import relativedelta
 from typing import Literal, get_args, Tuple, Dict, List, Type
-import logging
 from awardsreport.models import (
     AssistanceTransactions,
     ProcurementTransactions,
     TransactionDerivationsMixin,
 )
 
-
-logging.basicConfig(
-    filename=f"{__name__}.log",
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(filename)s - %(funcName)s - %(lineno)d  %(message)s",
-)
 
 file_types = Literal["assistance", "procurement"]
 TODAY = date.today()
@@ -61,7 +54,7 @@ def get_date_ranges(
     month: int,
     no_months: int = 13,
     period_months: int = 12,
-):
+) -> list[tuple[str]]:
     """Get list of date ranges for start_date and end_date parameters for
     api/v2/bulk_downloads/awards.
 

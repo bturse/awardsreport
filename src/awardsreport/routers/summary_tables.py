@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Depends, Query
-
 from awardsreport.logic import summary_tables
 from awardsreport.database import get_db
 from sqlalchemy.orm import Session
 from typing import Annotated
-import logging
+import logging.config
+from awardsreport import log_config
 
-logger = logging.getLogger("root")
+logging.config.dictConfig(log_config.LOGGING_CONFIG)
+logger = logging.getLogger("awardsreport")
 
 router = APIRouter(prefix="/summary_tables")
 
@@ -27,7 +28,7 @@ async def create_summary_table(
     stmt = summary_tables.groupby_sum_filter_limit(
         groupby_cols=_gb, sum_col=_sum_col, year=y, month=m, limit=limit
     )
-    logging.info(stmt)
+    logger.info(stmt)
     results = db.execute(stmt).fetchall()
     results_dict = {}
     for result in results:
