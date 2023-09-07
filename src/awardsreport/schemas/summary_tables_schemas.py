@@ -4,6 +4,11 @@ from typing import Optional, Any, List
 from enum import Enum
 
 
+class SummaryRow(BaseModel):
+    grouping: list[str]
+    obligations: float
+
+
 class FederalAccountBalance(BaseModel):
     id: int
     federal_account_symbol: str

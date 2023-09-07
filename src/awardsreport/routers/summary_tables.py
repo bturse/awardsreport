@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from typing import Annotated
 import logging.config
 from awardsreport import log_config
+from awardsreport.schemas import summary_tables_schemas
 
 logging.config.dictConfig(log_config.LOGGING_CONFIG)
 logger = logging.getLogger("awardsreport")
@@ -15,8 +16,6 @@ router = APIRouter(prefix="/summary_tables")
 @router.get("/")
 async def create_summary_table(
     db: Session = Depends(get_db),
-    # need to figure out how to pass list as query param:
-    # https://fastapi.tiangolo.com/tutorial/query-params-str-validations/
     gb: Annotated[list[str] | None, Query()] = None,
     sum_col: str | None = Query(None),
     y: int | None = Query(None),
@@ -30,7 +29,10 @@ async def create_summary_table(
     )
     logger.info(stmt)
     results = db.execute(stmt).fetchall()
-    results_dict = {}
+    results_list = []
     for result in results:
-        results_dict[result[0]] = {result[1:]}
-    return results_dict
+        summary_row = summary_tables_schemas.SummaryRow(
+            grouping=result[0:-1], obligations=(result[-1])
+        )
+        results_list.append(summary_row)
+    return results_list
