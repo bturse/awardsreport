@@ -6,8 +6,12 @@ from datetime import date
 from awardsreport.database import Base
 
 
+class HasID:
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+
+
 class TransactionsMixin:
-    action_date: Mapped[date]
+    action_date: Mapped[Optional[date]]
     awarding_agency_code: Mapped[Optional[str]]
     awarding_agency_name: Mapped[Optional[str]]
     federal_action_obligation: Mapped[Optional[float]]
@@ -18,8 +22,8 @@ class TransactionsMixin:
 
 
 class ProcurementTransactionsMixin:
-    contract_award_unique_key: Mapped[str]
-    contract_transaction_unique_key: Mapped[str] = mapped_column(primary_key=True)
+    contract_award_unique_key: Mapped[Optional[str]]
+    contract_transaction_unique_key: Mapped[Optional[str]]
     naics_code: Mapped[Optional[str]] = mapped_column(String(6))
     naics_description: Mapped[Optional[str]]
     product_or_service_code: Mapped[Optional[str]] = mapped_column(String(6))
@@ -27,8 +31,8 @@ class ProcurementTransactionsMixin:
 
 
 class AssistanceTransactionsMixin:
-    assistance_award_unique_key: Mapped[str] = mapped_column(nullable=False)
-    assistance_transaction_unique_key: Mapped[str] = mapped_column(primary_key=True)
+    assistance_award_unique_key: Mapped[Optional[str]]
+    assistance_transaction_unique_key: Mapped[Optional[str]]
     assistance_type_code: Mapped[Optional[str]] = mapped_column(String(2))
     cfda_number: Mapped[Optional[str]] = mapped_column(String(6))
     cfda_title: Mapped[Optional[str]]
@@ -46,6 +50,7 @@ class AssistanceTransactions(
     Base,
     TransactionsMixin,
     AssistanceTransactionsMixin,
+    HasID,
     TransactionDerivationsMixin,  # must be inhereted last
 ):
     __tablename__ = "assistance_transactions"
@@ -55,6 +60,18 @@ class ProcurementTransactions(
     Base,
     TransactionsMixin,
     ProcurementTransactionsMixin,
+    HasID,
     TransactionDerivationsMixin,  # must be inhereted last
 ):
     __tablename__ = "procurement_transactions"
+
+
+class Transactions(
+    Base,
+    TransactionsMixin,
+    TransactionDerivationsMixin,
+    ProcurementTransactionsMixin,
+    AssistanceTransactionsMixin,
+    HasID,
+):
+    __tablename__ = "transactions"

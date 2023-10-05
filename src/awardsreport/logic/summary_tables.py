@@ -1,7 +1,11 @@
 from sqlalchemy import select, func, desc, Table, Select, Column
 from typing import Optional, Any, Literal
 from sqlalchemy.orm import Session, Mapped
-from awardsreport.models import AssistanceTransactions, ProcurementTransactions
+from awardsreport.models import (
+    AssistanceTransactions,
+    ProcurementTransactions,
+    Transactions,
+)
 from awardsreport.database import sess, Base
 import logging.config
 from awardsreport import log_config
@@ -11,8 +15,10 @@ logger = logging.getLogger("awardsreport")
 
 
 def str_to_col(
-    table: Literal["assistance_transactions", "procurement_transactions"],
-    cols: list[str] | str | None,
+    table: Literal[
+        "assistance_transactions", "procurement_transactions", "transactions"
+    ] = "transactions",
+    cols: list[str] | str | None = None,
 ) -> list[Column] | None:
     """Retrieve the specified SQlAlchemy Columns from the specified table.
 
@@ -29,9 +35,11 @@ def str_to_col(
         _table = AssistanceTransactions
     elif table == "procurement_transactions":
         _table = ProcurementTransactions
+    elif table == "transactions":
+        _table = Transactions
     else:
         raise ValueError(
-            "table must be either 'assistance_transactions' or 'procurement_transactions'"
+            "table must be 'transactions', 'assistance_transactions' or 'procurement_transactions'"
         )
     if cols is None:
         return None
@@ -91,4 +99,6 @@ def groupby_sum_filter_limit(
         stmt = stmt.where(table.action_date_year == year)  # type: ignore
     if month:
         stmt = stmt.where(table.action_date_month == month)  # type: ignore
+    for col in groupby_cols:
+        stmt = stmt.where(col != None)  # type: ignore
     return stmt
