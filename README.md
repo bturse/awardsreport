@@ -16,7 +16,8 @@ spending by various elements for each month.
 5. seed the database with raw data from USAs: `python src/awardsreport/setup/seed.py`. Accepts optional
 `--year`, `--month`, `no_months`, and `period_months` int parameters.
 6. run derivations: `python src/awardsreport/setup/transaction_derivations.py`
-7. run server on localhost: `python src/awardreport/main.py`
+7. insert records to `transansactions` table: `python src/awardsreport/setup/seed_transactions_table`
+8. run server on localhost: `python src/awardreport/main.py`
 
 
 ## Project Structure

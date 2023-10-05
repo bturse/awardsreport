@@ -1,6 +1,6 @@
 import uvicorn
 from fastapi import FastAPI
-from awardsreport.routers import topline, summary_tables
+from awardsreport.routers import summary_tables, topline
 from dotenv import load_dotenv
 import os
 from awardsreport.database import Session

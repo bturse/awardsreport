@@ -1,6 +1,6 @@
 from datetime import date
 from dateutil.relativedelta import relativedelta
-from typing import Literal, get_args, Tuple, Dict, List, Type
+from typing import Literal, get_args, Tuple, Dict, List, Type, Annotated
 from awardsreport.models import (
     AssistanceTransactions,
     ProcurementTransactions,
@@ -126,7 +126,7 @@ def get_awards_payloads(year, month, no_months, period_months):
             },
             "file_format": "csv",
         }
-        for start_date, end_date in date_ranges
+        for start_date, end_date in date_ranges  # type: ignore
     ]
     return payloads
 
