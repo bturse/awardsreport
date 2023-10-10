@@ -25,7 +25,7 @@ async def create_summary_table(
     _gb = summary_tables.str_to_col("transactions", cols=gb)
     _sum_col = summary_tables.str_to_col("transactions", sum_col)
     stmt = summary_tables.groupby_sum_filter_limit(
-        groupby_cols=_gb, sum_col=_sum_col, year=y, month=m, limit=limit
+        db, groupby_cols=_gb, sum_col=_sum_col, year=y, month=m, limit=limit
     )
     logger.info(stmt)
     results = db.execute(stmt).fetchall()

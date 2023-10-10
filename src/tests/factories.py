@@ -1,7 +1,11 @@
 from collections import OrderedDict
 from factory import Factory, Sequence
 import datetime
-from awardsreport.models import ProcurementTransactions, AssistanceTransactions
+from awardsreport.models import (
+    ProcurementTransactions,
+    AssistanceTransactions,
+    Transactions,
+)
 from faker import Faker
 
 fake = Faker()
@@ -40,7 +44,14 @@ def generate_asisstance_award_unique_key() -> str:
     return "_".join((fain, uri, aw_ag_sub_code))
 
 
-class BaseTransactionsFactory(Factory):
+class HasIdFactory:
+    class Meta:
+        abstract = True
+
+    id = Sequence(lambda n: n)
+
+
+class TransactionsMixinFactory(Factory):
     class Meta:
         abstract = True
 
@@ -56,12 +67,23 @@ class BaseTransactionsFactory(Factory):
     recipient_name = fake.pystr(5, 10)
     recipient_uei = fake.pystr(5, 10)
     usaspending_permalink = fake.pystr(5, 10)
-    generated_pragmatic_obligations = fake.pyfloat(right_digits=2, max_value=100)
 
 
-class AssistanceTransactionsFactory(BaseTransactionsFactory):
+class ProcurementTransactionsMixinFactory(Factory):
     class Meta:
-        model = AssistanceTransactions
+        abstract = True
+
+    contract_award_unique_key = generate_contract_award_unique_key()
+    contract_transaction_unique_key = Sequence(lambda n: n)
+    naics_code = fake.bothify("##.###")
+    naics_description = fake.pystr(5, 10)
+    product_or_service_code = fake.bothify("######")
+    product_or_service_code_description = fake.pystr(5, 10)
+
+
+class AssistanceTransactionsMixinFactory(Factory):
+    class Meta:
+        abstract = True
 
     assistance_award_unique_key = generate_asisstance_award_unique_key()
     assistance_transaction_unique_key = Sequence(lambda n: n)
@@ -73,9 +95,42 @@ class AssistanceTransactionsFactory(BaseTransactionsFactory):
     )
 
 
-class ProcurementTransactionsFactory(BaseTransactionsFactory):
+class TransactionDerivationsMixinFactory(Factory):
+    class Meta:
+        abstract = True
+
+    generated_pragmatic_obligations = fake.pyfloat(right_digits=2, max_value=100)
+    action_date_month = fake.pyint(1, 12)
+    action_date_year = fake.pyint(2008, 2023)
+    award_summary_unique_key = Sequence(lambda n: n)
+
+
+class AssistanceTransactionsFactory(
+    TransactionsMixinFactory,
+    AssistanceTransactionsMixinFactory,
+    HasIdFactory,
+    TransactionDerivationsMixinFactory,
+):
+    class Meta:
+        model = AssistanceTransactions
+
+
+class ProcurementTransactionsFactory(
+    TransactionsMixinFactory,
+    ProcurementTransactionsMixinFactory,
+    HasIdFactory,
+    TransactionDerivationsMixinFactory,
+):
     class Meta:
         model = ProcurementTransactions
 
-    contract_award_unique_key = generate_contract_award_unique_key()
-    contract_transaction_unique_key = Sequence(lambda n: n)
+
+class TransactionsFactory(
+    TransactionsMixinFactory,
+    TransactionDerivationsMixinFactory,
+    ProcurementTransactionsMixinFactory,
+    AssistanceTransactionsMixinFactory,
+    HasIdFactory,
+):
+    class Meta:
+        model = Transactions
