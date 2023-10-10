@@ -52,6 +52,7 @@ def str_to_col(
 
 
 def groupby_sum_filter_limit(
+    session: Session,
     groupby_cols: list[Column] | Column | None,
     sum_col: list[Column[float]] | Column[float] | None = None,
     year: int | None = None,

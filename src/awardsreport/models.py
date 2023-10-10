@@ -6,7 +6,7 @@ from datetime import date
 from awardsreport.database import Base
 
 
-class HasID:
+class HasId:
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
 
 
@@ -50,7 +50,7 @@ class AssistanceTransactions(
     Base,
     TransactionsMixin,
     AssistanceTransactionsMixin,
-    HasID,
+    HasId,
     TransactionDerivationsMixin,  # must be inhereted last
 ):
     __tablename__ = "assistance_transactions"
@@ -60,7 +60,7 @@ class ProcurementTransactions(
     Base,
     TransactionsMixin,
     ProcurementTransactionsMixin,
-    HasID,
+    HasId,
     TransactionDerivationsMixin,  # must be inhereted last
 ):
     __tablename__ = "procurement_transactions"
@@ -72,6 +72,6 @@ class Transactions(
     TransactionDerivationsMixin,
     ProcurementTransactionsMixin,
     AssistanceTransactionsMixin,
-    HasID,
+    HasId,
 ):
     __tablename__ = "transactions"
