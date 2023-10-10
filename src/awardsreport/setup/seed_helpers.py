@@ -1,10 +1,11 @@
 from datetime import date
 from dateutil.relativedelta import relativedelta
-from typing import Literal, get_args, Tuple, Dict, List, Type, Annotated
+from typing import Literal, get_args, Tuple, Dict, List, Type
 from awardsreport.models import (
     AssistanceTransactions,
     ProcurementTransactions,
     TransactionDerivationsMixin,
+    HasId,
 )
 
 
@@ -43,10 +44,19 @@ AWARDS_DL_EP = "https://api.usaspending.gov/api/v2/bulk_download/awards/"
 
 def get_raw_columns(
     table: Type[AssistanceTransactions] | Type[ProcurementTransactions],
-):
+) -> list[str]:
+    """Get non-derived, non-Id columns from specified table.
+
+    args
+        table: Type[AssistanceTransactions] | Type[ProcurementTransactions] the
+        table from which to retrieve the raw columns.
+
+    returns list[str] sorted raw columns
+    """
     table_cols = table.__table__.columns.keys()
     derived_cols = TransactionDerivationsMixin.__annotations__
-    return sorted([key for key in table_cols if key not in derived_cols])
+    id_col = HasId.__annotations__
+    return sorted([key for key in table_cols if key not in (*derived_cols, *id_col)])
 
 
 def get_date_ranges(
