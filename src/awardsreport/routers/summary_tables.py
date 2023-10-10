@@ -1,11 +1,10 @@
+import logging.config
 from fastapi import APIRouter, Depends, Query
+from awardsreport import log_config
 from awardsreport.logic import summary_tables
 from awardsreport.database import get_db
-from sqlalchemy import Sequence, Row
-from sqlalchemy.orm import Session
-import logging.config
-from awardsreport import log_config
 from awardsreport.schemas import summary_tables_schemas
+from sqlalchemy.orm import Session
 
 logging.config.dictConfig(log_config.LOGGING_CONFIG)
 logger = logging.getLogger("awardsreport")
@@ -16,17 +15,15 @@ router = APIRouter(prefix="/summary_tables")
 @router.get("/")
 async def create_summary_table(
     db: Session = Depends(get_db),
-    gb: list[str] = Query(None),
-    sum_col: str | None = Query(None),
+    gb: list[summary_tables_schemas.GroupByCol] = Query(None),
     y: int | None = Query(None),
     m: int | None = Query(None),
     limit: int = Query(10),
 ) -> list[summary_tables_schemas.SummaryRow]:
-    _gb = summary_tables.str_to_col("transactions", cols=gb)
-    _sum_col = summary_tables.str_to_col("transactions", sum_col)
-    stmt = summary_tables.groupby_sum_filter_limit(
-        db, groupby_cols=_gb, sum_col=_sum_col, year=y, month=m, limit=limit
+    validated_query = summary_tables_schemas.GroupBySumFilterLimitQuery(
+        gb=gb, year=y, month=m, limit=limit
     )
+    stmt = summary_tables.groupby_sum_filter_limit(db, query=validated_query)
     logger.info(stmt)
     results = db.execute(stmt).fetchall()
     results_list = []
