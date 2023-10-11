@@ -4,7 +4,9 @@ from awardsreport.logic import summary_tables
 from awardsreport.main import app
 from awardsreport.routers.summary_tables import router
 from awardsreport.schemas import summary_tables_schemas
+from datetime import date
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 from tests.factories import TransactionsFactory
 from typing import get_args
@@ -63,3 +65,23 @@ def test_valid_group_by_col(db_session):
 def test_invalid_group_by_col(db_session):
     response = client.get(f"{router.prefix}/?gb=invalidgroupbycol")
     assert response.status_code == 422
+
+
+def test_invalid_year():
+    years = [2000, date.today().year + 1]
+    for year in years:
+        with pytest.raises(ValidationError):
+            summary_tables_schemas.GroupBySumFilterLimitQuery(
+                gb=get_args(summary_tables_schemas.GroupByCol)[0],
+                year=year,
+            )
+
+
+def test_invalid_month():
+    months = [0, 13]
+    for month in months:
+        with pytest.raises(ValidationError):
+            summary_tables_schemas.GroupBySumFilterLimitQuery(
+                gb=get_args(summary_tables_schemas.GroupByCol)[0],
+                month=month,
+            )

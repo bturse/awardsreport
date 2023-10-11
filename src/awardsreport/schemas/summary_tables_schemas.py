@@ -34,7 +34,7 @@ class GroupBySumFilterLimitQuery(BaseModel):
     def check_year_in_2008_cy(cls, v):
         this_year = date.today().year
         if v and (v < 2008 or v > this_year):
-            raise ValueError("year must be within 2008 - {this_year}.")
+            raise ValueError(f"year must be within 2008 - {this_year}.")
         return v
 
     @validator("month")
