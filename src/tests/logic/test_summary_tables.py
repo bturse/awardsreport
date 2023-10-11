@@ -1,11 +1,15 @@
 import pytest
-from awardsreport.logic import summary_tables
 from awardsreport.database import engine
-from awardsreport.models import Transactions
+from awardsreport.logic import summary_tables
+from awardsreport.main import app
+from awardsreport.routers.summary_tables import router
 from awardsreport.schemas import summary_tables_schemas
+from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-
 from tests.factories import TransactionsFactory
+from typing import get_args
+
+client = TestClient(app)
 
 
 @pytest.fixture
@@ -47,3 +51,15 @@ def test_groupby_multi(
         ("00.000", "awag1", 2.5),
     ]
     assert result == expected_result
+
+
+def test_valid_group_by_col(db_session):
+    response = client.get(
+        f"{router.prefix}/?gb={get_args(summary_tables_schemas.GroupByCol)[0]}"
+    )
+    assert response.status_code == 200
+
+
+def test_invalid_group_by_col(db_session):
+    response = client.get(f"{router.prefix}/?gb=invalidgroupbycol")
+    assert response.status_code == 422
