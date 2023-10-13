@@ -3,9 +3,10 @@ from dateutil.relativedelta import relativedelta
 from typing import Literal, get_args, Tuple, Dict, List, Type
 from awardsreport.models import (
     AssistanceTransactions,
+    AssistanceTransactionsMixin,
     ProcurementTransactions,
-    TransactionDerivationsMixin,
-    HasId,
+    ProcurementTransactionsMixin,
+    TransactionsMixin,
 )
 
 
@@ -51,12 +52,22 @@ def get_raw_columns(
         table: Type[AssistanceTransactions] | Type[ProcurementTransactions] the
         table from which to retrieve the raw columns.
 
-    returns list[str] sorted raw columns
+    raises
+        ValueError if table not in (AssistanceTransactions, ProcurementTransactions)
+
+    returns list[str] sorted columns from table that come directly from the source data.
     """
-    table_cols = table.__table__.columns.keys()
-    derived_cols = TransactionDerivationsMixin.__annotations__
-    id_col = HasId.__annotations__
-    return sorted([key for key in table_cols if key not in (*derived_cols, *id_col)])
+    if table not in (AssistanceTransactions, ProcurementTransactions):
+        raise ValueError(
+            f"invalid table {table}, expected one of (AssistanceTransactions, ProcurementTransactions"
+        )
+    asst_proc_tx_cols = (
+        AssistanceTransactionsMixin.__annotations__
+        if table == AssistanceTransactions
+        else ProcurementTransactionsMixin.__annotations__
+    )
+    tx_cols = TransactionsMixin.__annotations__
+    return sorted([*asst_proc_tx_cols, *tx_cols])
 
 
 def get_date_ranges(
@@ -64,7 +75,7 @@ def get_date_ranges(
     month: int,
     no_months: int = 13,
     period_months: int = 12,
-) -> list[tuple[str]]:
+) -> list[tuple[str, str]]:
     """Get list of date ranges for start_date and end_date parameters for
     api/v2/bulk_downloads/awards.
 
@@ -86,6 +97,8 @@ def get_date_ranges(
     raises
         ValueError if no_months <= 0
         ValueError if period_months > 12
+
+    returns list[tuple[str, str]]
     """
     if no_months <= 0:
         raise ValueError("no_months must be greater than 0.")
@@ -136,7 +149,7 @@ def get_awards_payloads(year, month, no_months, period_months):
             },
             "file_format": "csv",
         }
-        for start_date, end_date in date_ranges  # type: ignore
+        for start_date, end_date in date_ranges
     ]
     return payloads
 
