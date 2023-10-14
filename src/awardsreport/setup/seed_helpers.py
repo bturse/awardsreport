@@ -8,6 +8,7 @@ from awardsreport.models import (
     ProcurementTransactionsMixin,
     TransactionsMixin,
 )
+from awardsreport.schemas import seed_helpers_schemas
 
 
 file_types = Literal["assistance", "procurement"]
@@ -121,7 +122,9 @@ def get_date_ranges(
     return date_ranges
 
 
-def get_awards_payloads(year, month, no_months, period_months):
+def get_awards_payloads(
+    year: int, month: int, no_months: int, period_months: int
+) -> list[seed_helpers_schemas.AwardsPayload]:
     """Generate payloads for USAs awards download for full months no_months
     before the last day of the specified month.
 
@@ -131,27 +134,30 @@ def get_awards_payloads(year, month, no_months, period_months):
         year int the last year of the last date range.
         month int the last month of the last date range.
         no_months int the number of months prior of the first date.
+        period_months int maximum number of months between payload start_date and end_date
 
-    returns list of dict suitable as payloads for api/v2/bulk_downloads/awards/
+    returns list[seed_helpers_schemas.AwardsPayload]for api/v2/bulk_downloads/awards/
     """
-    date_ranges = get_date_ranges(year, month, no_months, period_months)
-    payloads = [
-        {
-            "columns": list(
+    return [
+        seed_helpers_schemas.AwardsPayload(
+            columns=list(
                 set(get_raw_columns(AssistanceTransactions))
                 | set(get_raw_columns(ProcurementTransactions))
             ),
-            "filters": {
-                "prime_award_types": PRIME_AWARD_TYPES,
-                "date_type": "action_date",
-                "date_range": {f"start_date": start_date, "end_date": end_date},
-                "agencies": [{"type": "awarding", "tier": "toptier", "name": "All"}],
-            },
-            "file_format": "csv",
-        }
-        for start_date, end_date in date_ranges
+            filters=seed_helpers_schemas.AwardsPayloadFilters(
+                prime_award_types=PRIME_AWARD_TYPES,
+                date_type="action_date",
+                date_range=seed_helpers_schemas.AwardsPayloadFilterDateRange(
+                    start_date=start_date,
+                    end_date=end_date,
+                ),
+                agencies=[seed_helpers_schemas.AwardsPayloadFilterAgencies()],
+            ),
+        )
+        for start_date, end_date in get_date_ranges(
+            year, month, no_months, period_months
+        )
     ]
-    return payloads
 
 
 def generate_copy_from_sql(

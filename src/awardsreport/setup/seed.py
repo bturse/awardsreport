@@ -42,7 +42,7 @@ def awards_usas_to_sql(year, month, no_months, period_months=12):
 
     payloads = get_awards_payloads(year, month, no_months, period_months)
     logger.info(
-        f"payload filter date ranges: {[payload['filters']['date_range'] for payload in payloads]}"
+        f"payload filter date ranges: {[payload.filters.date_range for payload in payloads]}"
     )
 
     conn = engine.raw_connection()
@@ -51,8 +51,8 @@ def awards_usas_to_sql(year, month, no_months, period_months=12):
     logger.info(f"cursor: {conn}")
 
     for payload in payloads:
-        r = requests.post(AWARDS_DL_EP, json=payload, headers=USER_AGENT).json()
-        logger.info(f"date_range: [{payload['filters']['date_range']}]")
+        r = requests.post(AWARDS_DL_EP, json=payload.dict(), headers=USER_AGENT).json()
+        logger.info(f"date_range: [{payload.filters.date_range}]")
         logger.info(f"file_url: {r['file_url']}")
         logger.info(f"status_url: {r['status_url']}")
         status = get_status(r["status_url"])
