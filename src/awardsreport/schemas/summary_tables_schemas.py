@@ -47,3 +47,7 @@ class GroupBySumFilterLimitQuery(BaseModel):
 class SummaryRow(BaseModel):
     grouping: list[str]
     obligations: float
+
+
+class SummaryTable(BaseModel):
+    results: list[SummaryRow]

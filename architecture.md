@@ -1,10 +1,11 @@
+allow filtering by additional elements
+
 **add additional data elements**
+- solicitation_id, funding_opportunity_number
 - PPop and recipient county name/fips
 - assistance type descriptions
 - recipient socioeconomic/demographic categories
-- solicitation_id, funding_opportunity_number
-
-allow filtering by additional elements
+- elements from contrct opportunity and NOFO
 
 **load additional data sets**
 - sam.gov contract opportunities (join w solicitation ID)
@@ -22,6 +23,7 @@ update copy from statement
 - request all downloads at once in seed.py
 - implement incremental backoff for loaders
 
+write seed.py tests
 
 change type hints to MappedClassProtocol
 https://docs.sqlalchemy.org/en/20/orm/mapping_styles.html
