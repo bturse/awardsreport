@@ -1,4 +1,7 @@
-allow filtering by additional elements
+**validate parameter formats**
+- validate psc is 4 characters
+- validate ym, y params
+- validate cfda ##.###
 
 **add additional data elements**
 - solicitation_id, funding_opportunity_number

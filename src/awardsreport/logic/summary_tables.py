@@ -1,61 +1,115 @@
-from sqlalchemy import select, func, desc, Select, Column
-from sqlalchemy.orm import Session
-from awardsreport.models import Transactions
-from awardsreport.schemas import summary_tables_schemas
-import logging.config
 from awardsreport import log_config
+from awardsreport.models import Transactions as T
+from awardsreport.schemas import summary_tables_schemas
+from fastapi import Depends
+from sqlalchemy import select, func, desc, Select, and_
+from sqlalchemy.orm import InstrumentedAttribute
+from typing import Any, Annotated
+import logging.config
 
 logging.config.dictConfig(log_config.LOGGING_CONFIG)
 logger = logging.getLogger("awardsreport")
 
+# keys are possible values provided to summary_tables gb parameter.
+# values are associated the ORM mapped Columns.
+group_by_key_col = {
+    "atc": T.assistance_type_code,
+    "awag": T.awarding_agency_name,
+    "awid": T.award_summary_unique_key,
+    "cfda": T.cfda_title,
+    "naics": T.naics_description,
+    "ppopst": T.primary_place_of_performance_state_name,
+    "psc": T.product_or_service_code_description,
+    "uei": T.recipient_name,
+    "y": T.action_date_year,
+    "ym": T.action_date_year_month,
+}
 
-def str_to_col(
-    cols: summary_tables_schemas.GroupByCol | list[summary_tables_schemas.GroupByCol],
-) -> list[Column]:
-    """Retrieve the specified SQlAlchemy ORM mapped Columns from the transactions table.
+# keys represent filter key passed to summary_tables.
+# values represent lambda functions to filter using parameter values.
+filter_key_op = {
+    "atc": lambda v: T.assistance_type_code.in_(v),
+    "awag": lambda v: T.awarding_agency_code.in_(v),
+    "awid": lambda v: T.award_summary_unique_key.in_(v),
+    "cfda": lambda v: T.cfda_number.in_(v),
+    "end_date": lambda v: (T.action_date <= v),
+    "naics": lambda v: T.naics_code.in_(v),
+    "ppopst": lambda v: T.primary_place_of_performance_state_name.in_(v),
+    "psc": lambda v: T.product_or_service_code.in_(v),
+    "start_date": lambda v: (T.action_date >= v),
+    "uei": lambda v: T.recipient_uei.in_(v),
+    "y": lambda v: T.action_date_year.in_(v),
+    "ym": lambda v: T.action_date_year_month.in_(v),
+}
 
-    args:
-        cols: summary_tables_schemas.TransactionGroupBy |
-        list[summary_tables_schemas.TransactionGroupBy] the column(s)
-        to retrieve.
 
-    returns list[Column] column ORM objects from transactions table
+def create_group_by_col_list(
+    schema: summary_tables_schemas.GroupByStatementSchema,
+) -> list[InstrumentedAttribute]:
+    """Generate list of ORM mapped columns to group by.
+
+    params
+        schema: summary_tables_schemas.GroupByStatementSchema
+
+    return list[InstrumentedAttribute]
     """
-    if not isinstance(cols, list):
-        cols = [cols]
-    col_orm_list = []
-    for col in cols:
-        col_orm_list.append(getattr(Transactions, str(col)))
-    return col_orm_list
+    group_by_col_list = []
+    for col in schema.gb:
+        if col in group_by_key_col:
+            group_by_col_list.append(group_by_key_col[col])
+    return group_by_col_list
 
 
-def groupby_sum_filter_limit(
-    session: Session, query: summary_tables_schemas.GroupBySumFilterLimitQuery
+def create_filter_statement(
+    schema: Annotated[summary_tables_schemas.FilterStatementSchema, Depends()]
+) -> Any:
+    """Combine filters using and to create filter statement for SQLAlchemy Select.
+
+    Combines all filters using AND logic.
+
+    params
+        schema: Annotated[summary_tables_schemas.FilterStatementSchema, Depends()]
+
+    return Any apply to SQLAlchemy Select to filter results.
+    """
+    filter_statement_list = []
+    for key in schema.__annotations__:
+        if key in filter_key_op:
+            value = schema[key]
+            if value:
+                filter_statement = filter_key_op[key](value)
+                filter_statement_list.append(filter_statement)
+    return and_(True, *filter_statement_list)
+
+
+def create_group_by_sum_filter_limit_statement(
+    group_by_schema: summary_tables_schemas.GroupByStatementSchema,
+    filter_schema: summary_tables_schemas.FilterStatementSchema,
+    limit_schema: summary_tables_schemas.LimitStatementSchema,
 ) -> Select:
-    """Generate SQL statement to find sum of column by grouping.
+    """Create SQLAlchemy Select using provided group by, filter, and limit values.
 
-    args:
-        session: Session
-        query: summary_tables_schemas.GroupBySumFilterLimitQuery
+    Filters are combined using AND logic. group by columns are filtered for not null.
 
-    returns sqlalchemy.Select
+    params
+        group_by_schema: summary_tables_schemas.GroupByStatementSchema,
+        filter_schema: summary_tables_schemas.FilterStatementSchema,
+        limit_schema: summary_tables_schemas.LimitStatementSchema,
+
+    return Select
     """
-    gb_cols = str_to_col(query.gb)
+    filter_statement = create_filter_statement(filter_schema)
+    group_by_col_list = create_group_by_col_list(group_by_schema)
+
     stmt = (
         select(
-            *gb_cols,
-            func.sum(Transactions.generated_pragmatic_obligations).label(
-                "sum_spending"
-            ),
+            *group_by_col_list,
+            func.sum(T.generated_pragmatic_obligations).label("sum_spending"),
         )
-        .group_by(*gb_cols)
-        .order_by(desc("sum_spending").nulls_last())
-        .limit(query.limit)
+        .group_by(*group_by_col_list)
+        .where(and_(*[col.isnot(None) for col in group_by_col_list]))
+        .where(filter_statement)
+        .limit(limit_schema.limit)
+        .order_by(desc("sum_spending"))
     )
-    if query.year:
-        stmt = stmt.where(Transactions.action_date_year == query.year)
-    if query.month:
-        stmt = stmt.where(Transactions.action_date_month == query.month)
-    for col in gb_cols:
-        stmt = stmt.where(col != None)
     return stmt
