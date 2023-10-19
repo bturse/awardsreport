@@ -73,7 +73,7 @@ def set_action_date_year_month(
     return update(table).values(
         dict(
             action_date_year=extract("year", table.action_date),
-            action_date_month=extract("month", table.action_date),
+            action_date_year_month=func.to_char(table.action_date, "YYYY-MM"),
         )
     )
 

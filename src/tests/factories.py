@@ -1,11 +1,11 @@
-from collections import OrderedDict
-from factory import Factory, Sequence
-import datetime
 from awardsreport.models import (
     ProcurementTransactions,
     AssistanceTransactions,
     Transactions,
 )
+from collections import OrderedDict
+import datetime
+from factory import Factory, Sequence
 from faker import Faker
 
 fake = Faker()
@@ -100,7 +100,7 @@ class TransactionDerivationsMixinFactory(Factory):
         abstract = True
 
     generated_pragmatic_obligations = fake.pyfloat(right_digits=2, max_value=100)
-    action_date_month = fake.pyint(1, 12)
+    action_date_year_month = f"{str(fake.pyint(2008, 2023))}-{str(fake.pyint(1, 12))}"
     action_date_year = fake.pyint(2008, 2023)
     award_summary_unique_key = Sequence(lambda n: n)
 
