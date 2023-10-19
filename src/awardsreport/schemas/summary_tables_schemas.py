@@ -1,36 +1,40 @@
 from awardsreport.models import Transactions as T
-from datetime import date
-from fastapi import Query, Depends
-from pydantic import BaseModel, validator, Field
-from sqlalchemy import and_, BinaryExpression
-from typing import get_args, Literal, Optional, TypedDict, cast, List, Annotated
 from dataclasses import dataclass
+from datetime import date
+from fastapi import Query
+from pydantic import BaseModel, validator
+from typing import Literal, Optional, Annotated
+
+gb_values = Literal[
+    "atc",
+    "awag",
+    "awid",
+    "cfda",
+    "naics",
+    "ppopst",
+    "psc",
+    "uei",
+    "y",
+    "ym",
+]
+
+atc_values = Literal["02", "03", "04", "05", "06", "07", "08", "09", "10", "11"]
 
 
-@dataclass
-class GroupByStatementSchema:
-    gb: list[
-        Literal[
-            "atc",
-            "awag",
-            "awid",
-            "cfda",
-            "naics",
-            "ppopst",
-            "psc",
-            "uei",
-            "y",
-            "ym",
-        ]
-    ] = Query(..., description="Group by these columns.")
+class GroupByStatementSchema(BaseModel):
+    gb: Annotated[list[gb_values], Query(..., description="Group by these columns.")]
+
+    @validator("gb")
+    def gb_not_empty(cls, v):
+        if len(v) > 0:
+            return v
+        else:
+            raise ValueError("gb must not be an empty list.")
 
 
-@dataclass
-class FilterStatementSchema:
+class FilterStatementSchema(BaseModel):
     atc: Annotated[
-        Optional[
-            list[Literal["02", "03", "04", "05", "06", "07", "08", "09", "10", "11"]]
-        ],
+        Optional[list[Literal[atc_values]]],
         Query(
             description=T.assistance_type_code.doc,
             example=["02", "03"],
@@ -75,14 +79,14 @@ class FilterStatementSchema:
     ppopst: Annotated[
         Optional[list[str]],
         Query(
-            description=T.primary_place_of_performance_state_name.doc,
+            description=f"**Primary Place of Performance State Name**. {T.primary_place_of_performance_state_name.doc}",
             example=["FL", "GA"],
         ),
     ] = None
     psc: Annotated[
         Optional[list[str]],
         Query(
-            description=T.product_or_service_code.doc,
+            description=f"Product or Service Code. {T.product_or_service_code.doc}",
             example=["1005", "1010"],
         ),
     ] = None
@@ -120,8 +124,7 @@ class FilterStatementSchema:
         return getattr(self, item)
 
 
-@dataclass
-class LimitStatementSchema:
+class LimitStatementSchema(BaseModel):
     limit: Annotated[
         Optional[int],
         Query(

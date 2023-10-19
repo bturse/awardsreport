@@ -2,9 +2,9 @@ from awardsreport import log_config
 from awardsreport.models import Transactions as T
 from awardsreport.schemas import summary_tables_schemas
 from fastapi import Depends
-from sqlalchemy import select, func, desc, Select, and_
+from sqlalchemy import select, func, desc, Select, and_, true
 from sqlalchemy.orm import InstrumentedAttribute
-from typing import Any, Annotated
+from typing import Any, Annotated, get_args
 import logging.config
 
 logging.config.dictConfig(log_config.LOGGING_CONFIG)
@@ -55,8 +55,10 @@ def create_group_by_col_list(
     """
     group_by_col_list = []
     for col in schema.gb:
-        if col in group_by_key_col:
-            group_by_col_list.append(group_by_key_col[col])
+        if col in group_by_key_col.keys():
+            gb_col = group_by_key_col[col]
+            group_by_col_list.append(gb_col)
+
     return group_by_col_list
 
 
@@ -79,7 +81,8 @@ def create_filter_statement(
             if value:
                 filter_statement = filter_key_op[key](value)
                 filter_statement_list.append(filter_statement)
-    return and_(True, *filter_statement_list)
+    # filter by sqlalchemy.true to avoid deprecation warning
+    return and_(true, *filter_statement_list)
 
 
 def create_group_by_sum_filter_limit_statement(

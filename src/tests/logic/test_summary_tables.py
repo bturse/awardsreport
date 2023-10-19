@@ -1,87 +1,181 @@
-import pytest
-from awardsreport.database import engine
 from awardsreport.logic import summary_tables
 from awardsreport.main import app
-from awardsreport.routers.summary_tables import router
+from awardsreport.models import Transactions as T
 from awardsreport.schemas import summary_tables_schemas
-from datetime import date
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
-from sqlalchemy.orm import Session
-from tests.factories import TransactionsFactory
+from sqlalchemy import and_, true
 from typing import get_args
+import pytest
 
 client = TestClient(app)
 
 
-@pytest.fixture
-def test_groupby_multi_data() -> list[TransactionsFactory]:
-    return [
-        TransactionsFactory(
-            generated_pragmatic_obligations=1,
-            cfda_number="00.000",
-            awarding_agency_name="awag1",
-        ),
-        TransactionsFactory(
-            generated_pragmatic_obligations=1.5,
-            cfda_number="00.000",
-            awarding_agency_name="awag1",
-        ),
-        TransactionsFactory(
-            generated_pragmatic_obligations=3,
-            cfda_number="00.001",
-            awarding_agency_name="awag2",
-        ),
-    ]
-
-
-def test_groupby_multi(
-    db_session: Session,
-    test_groupby_multi_data: list[TransactionsFactory],
-):
-    db_session.bind = engine
-    db_session.add_all(test_groupby_multi_data)
-    db_session.commit()
-    query = summary_tables_schemas.GroupBySumFilterLimitQuery(
-        gb=["cfda_number", "awarding_agency_name"]
+def test_create_group_by_col_list_one():
+    group_by_statement_schema = summary_tables_schemas.GroupByStatementSchema(
+        gb=["atc"]
     )
-    stmt = summary_tables.groupby_sum_filter_limit(db_session, query)
-    with Session(engine) as sess:
-        result = sess.execute(stmt).fetchall()
-    expected_result = [
-        ("00.001", "awag2", 3),
-        ("00.000", "awag1", 2.5),
-    ]
-    assert result == expected_result
+    results = summary_tables.create_group_by_col_list(group_by_statement_schema)
+    expected_results = [T.assistance_type_code]
+    assert results == expected_results
 
 
-def test_valid_group_by_col(db_session):
-    response = client.get(
-        f"{router.prefix}/?gb={get_args(summary_tables_schemas.GroupByCol)[0]}"
+def test_create_group_by_col_list_each():
+    keys = get_args(summary_tables_schemas.gb_values)
+    for key in keys:
+        group_by_statement_schema = summary_tables_schemas.GroupByStatementSchema(
+            gb=[key]
+        )
+        results = summary_tables.create_group_by_col_list(group_by_statement_schema)
+        expected_results = [summary_tables.group_by_key_col[key]]
+        assert results == expected_results
+
+
+def test_create_group_by_col_list_all():
+    group_by_statement_schema = summary_tables_schemas.GroupByStatementSchema(
+        gb=get_args(summary_tables_schemas.gb_values)  # type: ignore
     )
-    assert response.status_code == 200
+    results = summary_tables.create_group_by_col_list(group_by_statement_schema)
+    expected_results = list(summary_tables.group_by_key_col.values())
+    assert results == expected_results
 
 
-def test_invalid_group_by_col(db_session):
-    response = client.get(f"{router.prefix}/?gb=invalidgroupbycol")
-    assert response.status_code == 422
+def test_create_group_by_col_list_invalid():
+    with pytest.raises(ValidationError):
+        summary_tables_schemas.GroupByStatementSchema(gb=["fake"])  # type: ignore
 
 
-def test_invalid_year():
-    years = [2000, date.today().year + 1]
-    for year in years:
-        with pytest.raises(ValidationError):
-            summary_tables_schemas.GroupBySumFilterLimitQuery(
-                gb=get_args(summary_tables_schemas.GroupByCol)[0],
-                year=year,
-            )
+def test_create_group_by_col_list_gb_none():
+    with pytest.raises(ValidationError):
+        summary_tables_schemas.GroupByStatementSchema(gb=None)  # type: ignore
 
 
-def test_invalid_month():
-    months = [0, 13]
-    for month in months:
-        with pytest.raises(ValidationError):
-            summary_tables_schemas.GroupBySumFilterLimitQuery(
-                gb=get_args(summary_tables_schemas.GroupByCol)[0],
-                month=month,
-            )
+def test_create_group_by_col_list_gb_empty():
+    with pytest.raises(ValidationError):
+        summary_tables_schemas.GroupByStatementSchema(gb=[])  # type: ignore
+
+
+def test_create_filter_statement_atc_valid():
+    filter_statement_schema = summary_tables_schemas.FilterStatementSchema(atc=["02"])
+    results = summary_tables.create_filter_statement(filter_statement_schema)
+    expected_results = and_(true, T.assistance_type_code.in_(["02"]))
+    assert results.compare(expected_results)
+
+
+def test_create_filter_statement_atc_invalid():
+    with pytest.raises(ValidationError):
+        summary_tables_schemas.FilterStatementSchema(atc=["fake"])  # type: ignore
+
+
+def test_create_filter_statement_empty():
+    filter_statement_schema = summary_tables_schemas.FilterStatementSchema()
+    results = summary_tables.create_filter_statement(filter_statement_schema)
+    expected_results = and_(true)
+    assert results.compare(expected_results)
+
+
+def test_create_filter_statement_awag():
+    filter_statement_schema = summary_tables_schemas.FilterStatementSchema(
+        awag=["070", "069"]
+    )
+    results = summary_tables.create_filter_statement(filter_statement_schema)
+    expected_results = and_(true, T.awarding_agency_code.in_(["070", "069"]))
+    assert results.compare(expected_results)
+
+
+def test_create_filter_statement_awid():
+    filter_statement_schema = summary_tables_schemas.FilterStatementSchema(
+        awid=["CONT_123", "ASST_456"]
+    )
+    results = summary_tables.create_filter_statement(filter_statement_schema)
+    expected_results = and_(
+        true, T.award_summary_unique_key.in_(["CONT_123", "ASST_456"])
+    )
+    assert results.compare(expected_results)
+
+
+def test_create_filter_statement_cfda():
+    filter_statement_schema = summary_tables_schemas.FilterStatementSchema(
+        awid=["CONT_123", "ASST_456"]
+    )
+    results = summary_tables.create_filter_statement(filter_statement_schema)
+    expected_results = and_(
+        true, T.award_summary_unique_key.in_(["CONT_123", "ASST_456"])
+    )
+    assert results.compare(expected_results)
+
+
+def test_create_filter_statement_end_date():
+    filter_statement_schema = summary_tables_schemas.FilterStatementSchema(
+        end_date="2023-01-01"
+    )
+    results = summary_tables.create_filter_statement(filter_statement_schema)
+    expected_results = and_(true, T.action_date <= "2023-01-01")
+    assert results.compare(expected_results)
+
+
+def test_create_filter_statement_naics():
+    filter_statement_schema = summary_tables_schemas.FilterStatementSchema(
+        naics=["211111", "211112"]
+    )
+    results = summary_tables.create_filter_statement(filter_statement_schema)
+    expected_results = and_(true, T.naics_code.in_(["211111", "211112"]))
+    assert results.compare(expected_results)
+
+
+def test_create_filter_statement_ppopst():
+    filter_statement_schema = summary_tables_schemas.FilterStatementSchema(
+        ppopst=["FLORIDA", "CALIFORNIA"]
+    )
+    results = summary_tables.create_filter_statement(filter_statement_schema)
+    expected_results = and_(
+        true, T.primary_place_of_performance_state_name.in_(["FLORIDA", "CALIFORNIA"])
+    )
+    assert results.compare(expected_results)
+
+
+def test_create_filter_statement_psc():
+    filter_statement_schema = summary_tables_schemas.FilterStatementSchema(
+        psc=["AA10", "B503", "1005"]
+    )
+    results = summary_tables.create_filter_statement(filter_statement_schema)
+    expected_results = and_(
+        true, T.product_or_service_code.in_(["AA10", "B503", "1005"])
+    )
+    assert results.compare(expected_results)
+
+
+def test_create_filter_statement_start_date():
+    filter_statement_schema = summary_tables_schemas.FilterStatementSchema(
+        start_date="2023-01-01"
+    )
+    results = summary_tables.create_filter_statement(filter_statement_schema)
+    expected_results = and_(true, T.action_date >= "2023-01-01")
+    assert results.compare(expected_results)
+
+
+def test_create_filter_statement_uei():
+    filter_statement_schema = summary_tables_schemas.FilterStatementSchema(
+        uei=["abc", "def"]
+    )
+    results = summary_tables.create_filter_statement(filter_statement_schema)
+    expected_results = and_(true, T.recipient_uei.in_(["abc", "def"]))
+    assert results.compare(expected_results)
+
+
+def test_create_filter_statement_y():
+    filter_statement_schema = summary_tables_schemas.FilterStatementSchema(
+        y=[2022, 2023]
+    )
+    results = summary_tables.create_filter_statement(filter_statement_schema)
+    expected_results = and_(true, T.action_date_year.in_([2022, 2023]))
+    assert results.compare(expected_results)
+
+
+def test_create_filter_statement_ym():
+    filter_statement_schema = summary_tables_schemas.FilterStatementSchema(
+        ym=["2023-01", "2023-02"]
+    )
+    results = summary_tables.create_filter_statement(filter_statement_schema)
+    expected_results = and_(true, T.action_date_year_month.in_(["2023-01", "2023-02"]))
+    assert results.compare(expected_results)
