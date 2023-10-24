@@ -25,6 +25,15 @@ class TransactionsMixin:
         doc="""Primary Place of Performance State. Two-letter abbreviation for the state or territory indicating
         where the predominant performance of the award will be accomplished."""
     )
+    prime_award_transaction_place_of_performance_county_fips_code: Mapped[
+        Optional[str]
+    ] = mapped_column(
+        String(6),
+        doc="""5 character county FIPS code consisting of 2 character
+        state_numeric code, and 3 character county_numeric code. See Government
+        Units file:
+        https://www.usgs.gov/us-board-on-geographic-names/download-gnis-datahttps://www.usgs.gov/us-board-on-geographic-names/download-gnis-data.""",
+    )
     recipient_name: Mapped[Optional[str]]
     recipient_uei: Mapped[Optional[str]] = mapped_column(
         doc="""The Unique Entity Identifier (UEI) for an awardee or recipient. A

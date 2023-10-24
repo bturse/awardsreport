@@ -123,6 +123,18 @@ def test_create_filter_statement_naics():
     assert results.compare(expected_results)
 
 
+def test_create_filter_statement_ppopct():
+    filter_statement_schema = summary_tables_schemas.FilterStatementSchema(
+        ppopct=["01001"]
+    )
+    results = summary_tables.create_filter_statement(filter_statement_schema)
+    expected_results = and_(
+        true,
+        T.prime_award_transaction_place_of_performance_county_fips_code.in_(["01001"]),
+    )
+    assert results.compare(expected_results)
+
+
 def test_create_filter_statement_ppopst():
     filter_statement_schema = summary_tables_schemas.FilterStatementSchema(
         ppopst=["FLORIDA", "CALIFORNIA"]
