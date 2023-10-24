@@ -12,6 +12,7 @@ gb_values = Literal[
     "cfda",
     "naics",
     "ppopst",
+    "ppopct",
     "psc",
     "uei",
     "y",
@@ -74,6 +75,13 @@ class FilterStatementSchema(BaseModel):
         Query(
             description=T.naics_code.doc,
             example=["111110", "111120"],
+        ),
+    ] = None
+    ppopct: Annotated[
+        Optional[list[str]],
+        Query(
+            description=T.prime_award_transaction_place_of_performance_county_fips_code.doc,
+            example=["01001", "17097"],
         ),
     ] = None
     ppopst: Annotated[

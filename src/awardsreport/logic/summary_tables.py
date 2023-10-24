@@ -19,6 +19,7 @@ group_by_key_col = {
     "cfda": T.cfda_title,
     "naics": T.naics_description,
     "ppopst": T.primary_place_of_performance_state_name,
+    "ppopct": T.prime_award_transaction_place_of_performance_county_fips_code,
     "psc": T.product_or_service_code_description,
     "uei": T.recipient_name,
     "y": T.action_date_year,
@@ -35,6 +36,9 @@ filter_key_op = {
     "end_date": lambda v: (T.action_date <= v),
     "naics": lambda v: T.naics_code.in_(v),
     "ppopst": lambda v: T.primary_place_of_performance_state_name.in_(v),
+    "ppopct": lambda v: T.prime_award_transaction_place_of_performance_county_fips_code.in_(
+        v
+    ),
     "psc": lambda v: T.product_or_service_code.in_(v),
     "start_date": lambda v: (T.action_date >= v),
     "uei": lambda v: T.recipient_uei.in_(v),
