@@ -2,29 +2,14 @@ from awardsreport import log_config
 from awardsreport.models import Transactions as T
 from awardsreport.schemas import summary_tables_schemas
 from fastapi import Depends
-from sqlalchemy import select, func, desc, Select, and_, true
+from sqlalchemy import select, func, desc, Select, and_, true, Column
 from sqlalchemy.orm import InstrumentedAttribute
-from typing import Any, Annotated, get_args
+from typing import Any, Annotated, get_args, Optional, TypedDict
 import logging.config
 
 logging.config.dictConfig(log_config.LOGGING_CONFIG)
 logger = logging.getLogger("awardsreport")
 
-# keys are possible values provided to summary_tables gb parameter.
-# values are associated the ORM mapped Columns.
-group_by_key_col = {
-    "atc": T.assistance_type_code,
-    "awag": T.awarding_agency_name,
-    "awid": T.award_summary_unique_key,
-    "cfda": T.cfda_title,
-    "naics": T.naics_description,
-    "ppopst": T.primary_place_of_performance_state_name,
-    "ppopct": T.prime_award_transaction_place_of_performance_county_fips_code,
-    "psc": T.product_or_service_code_description,
-    "uei": T.recipient_name,
-    "y": T.action_date_year,
-    "ym": T.action_date_year_month,
-}
 
 # keys represent filter key passed to summary_tables.
 # values represent lambda functions to filter using parameter values.
@@ -44,6 +29,22 @@ filter_key_op = {
     "uei": lambda v: T.recipient_uei.in_(v),
     "y": lambda v: T.action_date_year.in_(v),
     "ym": lambda v: T.action_date_year_month.in_(v),
+}
+
+# keys represent filter key passed to summary_tables.
+# values represent lambda functions to filter using parameter values.
+group_by_key_col = {
+    "atc": T.assistance_type_code,
+    "awag": T.awarding_agency_name,
+    "awid": T.award_summary_unique_key,
+    "cfda": T.cfda_title,
+    "naics": T.naics_description,
+    "ppopst": T.primary_place_of_performance_state_name,
+    "ppopct": T.prime_award_transaction_place_of_performance_county_fips_code,
+    "psc": T.product_or_service_code_description,
+    "uei": T.recipient_name,
+    "y": T.action_date_year,
+    "ym": T.action_date_year_month,
 }
 
 
