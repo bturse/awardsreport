@@ -44,6 +44,7 @@ routers, setup scripts, models.
   - `src/awardsreport/routers/` FastAPI routers to implement logic
   - `src/awardsreport/schemas/` Pydantic models to support validation and
   documentation
+  - `src/awwardsreport/services` Format API response
   - `src/awardsreport/database.py` SQLAlchemy base classes and boilerplate
   - `src/awardsreport/main.py` uvicorn run command to start server for API
   - `src/awardsreport/models.py` SQLAlchemy models
@@ -51,6 +52,7 @@ routers, setup scripts, models.
 - `/src/tests` unit tests and pytest configuration
   - `src/tests/logic` tests for scripts in `src/awardsreport/logic`
   - `src/tests/setup` tests for scripts in `src/awardsreport/setup`
+  - `src/tests/services` tests for scripts in `src/awardsreport/services`
 - `/.env.example` sample database connection information. To be saved as `/.env`
 for python dotenv package.
 
@@ -95,7 +97,8 @@ new `gb` parameter key values.
     will test this element when added to `gb_values`.
 3. Add item to `group_by_key_col` dict in
 `src/awardsreport/logic/summary_tables.py`. Use the same key from previous step.
-4. run tests: `pytest`
+4. Add attribute to `TableSchemaData` in `src/awardsreport/schemas/summary_tables_schemas` using same name from step 2.
+5. run tests: `pytest`
 ### support summary table filter by new column
 This section describes how to allow the path GET `/summary_tables/` to accept
 new filter parameters.
@@ -105,7 +108,7 @@ new filter parameters.
 `src/awardsreport/logic/summary_tables.py`. If the filter merely checks for
 equality with an element that can be grouped by, use the same key from
 `group_by_key_col`.
-3. Add addtribute to `FilterStatementSchema` in
+3. Add attribute to `FilterStatementSchema` in
 `src/awardsreport/schemas/summary_tables_schemas.py`. The attribute name should
 match the key of the dict item from the previous set. If the filter merely
 checks for equality, the Query description should call the SQLAlchemy model
