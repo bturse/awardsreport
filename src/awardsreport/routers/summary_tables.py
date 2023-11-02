@@ -5,7 +5,7 @@ from awardsreport.schemas import summary_tables_schemas
 from awardsreport.services import summary_table_formatter
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from typing import Annotated, Union
+from typing import Annotated
 import logging.config
 
 logging.config.dictConfig(log_config.LOGGING_CONFIG)

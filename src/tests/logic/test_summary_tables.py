@@ -27,11 +27,7 @@ def test_create_group_by_col_list_each():
             gb=[key]
         )
         results = summary_tables.create_group_by_col_list(group_by_statement_schema)
-        expected_results = [
-            summary_tables_schemas.GroupBySchema.__fields__[key].field_info.extra[
-                "column"
-            ]
-        ]
+        expected_results = [summary_tables.group_by_key_col.get(key)]
         assert results == expected_results
 
 
@@ -40,10 +36,7 @@ def test_create_group_by_col_list_all():
     group_by_statement_schema = summary_tables_schemas.GroupByStatementSchema(
         gb=keys  # type:ignore
     )
-    expected_results = [
-        summary_tables_schemas.GroupBySchema.__fields__[key].field_info.extra["column"]
-        for key in keys
-    ]
+    expected_results = [summary_tables.group_by_key_col.get(key) for key in keys]
     results = summary_tables.create_group_by_col_list(group_by_statement_schema)
     assert results == expected_results
 
