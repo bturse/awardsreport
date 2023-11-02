@@ -19,6 +19,23 @@ spending by various elements for each month.
 7. insert records to `transansactions` table: `python src/awardsreport/setup/seed_transactions_table`
 8. run server on localhost: `python src/awardreport/main.py`
 
+## Example Usage
+Using the `summary_tables` GET endpoint to populate a pandas DataFrame:
+```
+import json
+import pandas as pd
+import requests
+
+r = requests.get("http://localhost:8000/summary_tables/?gb=naics&gb=ppopct&gb=awag&limit=500")
+
+df = pd.read_json(json.dumps(r.json()), orient='table')
+```
+
+Study the response metadata using the [JSON Table Schema](https://dataprotocols.org/json-table-schema/):
+```
+r.json()['schema']
+```
+
 
 ## Project Structure
 - `/src/awardsreport/` main functionality of the API, including: business logic,
@@ -27,6 +44,7 @@ routers, setup scripts, models.
   - `src/awardsreport/routers/` FastAPI routers to implement logic
   - `src/awardsreport/schemas/` Pydantic models to support validation and
   documentation
+  - `src/awwardsreport/services` Format API response
   - `src/awardsreport/database.py` SQLAlchemy base classes and boilerplate
   - `src/awardsreport/main.py` uvicorn run command to start server for API
   - `src/awardsreport/models.py` SQLAlchemy models
@@ -34,6 +52,7 @@ routers, setup scripts, models.
 - `/src/tests` unit tests and pytest configuration
   - `src/tests/logic` tests for scripts in `src/awardsreport/logic`
   - `src/tests/setup` tests for scripts in `src/awardsreport/setup`
+  - `src/tests/services` tests for scripts in `src/awardsreport/services`
 - `/.env.example` sample database connection information. To be saved as `/.env`
 for python dotenv package.
 
@@ -78,7 +97,8 @@ new `gb` parameter key values.
     will test this element when added to `gb_values`.
 3. Add item to `group_by_key_col` dict in
 `src/awardsreport/logic/summary_tables.py`. Use the same key from previous step.
-4. run tests: `pytest`
+4. Add attribute to `TableSchemaData` in `src/awardsreport/schemas/summary_tables_schemas` using same name from step 2.
+5. run tests: `pytest`
 ### support summary table filter by new column
 This section describes how to allow the path GET `/summary_tables/` to accept
 new filter parameters.
@@ -88,7 +108,7 @@ new filter parameters.
 `src/awardsreport/logic/summary_tables.py`. If the filter merely checks for
 equality with an element that can be grouped by, use the same key from
 `group_by_key_col`.
-3. Add addtribute to `FilterStatementSchema` in
+3. Add attribute to `FilterStatementSchema` in
 `src/awardsreport/schemas/summary_tables_schemas.py`. The attribute name should
 match the key of the dict item from the previous set. If the filter merely
 checks for equality, the Query description should call the SQLAlchemy model

@@ -1,6 +1,6 @@
 import uvicorn
 from fastapi import FastAPI
-from awardsreport.routers import summary_tables, topline
+from awardsreport.routers import summary_tables
 from dotenv import load_dotenv
 import os
 from awardsreport.database import Session
@@ -16,7 +16,6 @@ load_dotenv()
 
 app = FastAPI()
 app.include_router(summary_tables.router)
-app.include_router(topline.router)
 
 
 if __name__ == "__main__":

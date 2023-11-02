@@ -27,16 +27,17 @@ def test_create_group_by_col_list_each():
             gb=[key]
         )
         results = summary_tables.create_group_by_col_list(group_by_statement_schema)
-        expected_results = [summary_tables.group_by_key_col[key]]
+        expected_results = [summary_tables.group_by_key_col.get(key)]
         assert results == expected_results
 
 
 def test_create_group_by_col_list_all():
+    keys = get_args(summary_tables_schemas.gb_values)
     group_by_statement_schema = summary_tables_schemas.GroupByStatementSchema(
-        gb=get_args(summary_tables_schemas.gb_values)  # type: ignore
+        gb=keys  # type:ignore
     )
+    expected_results = [summary_tables.group_by_key_col.get(key) for key in keys]
     results = summary_tables.create_group_by_col_list(group_by_statement_schema)
-    expected_results = list(summary_tables.group_by_key_col.values())
     assert results == expected_results
 
 

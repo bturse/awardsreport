@@ -30,3 +30,5 @@ write seed.py tests
 
 change type hints to MappedClassProtocol
 https://docs.sqlalchemy.org/en/20/orm/mapping_styles.html
+
+use consistent langauge (summary_table not summary_tables) 

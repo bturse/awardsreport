@@ -19,7 +19,12 @@ class TransactionsMixin:
         doc="""Code for agency which made the award. See <https://files.usaspending.gov/reference_data/agency_codes.csv>
         CGAC AGENCY CODE column"""
     )
-    awarding_agency_name: Mapped[Optional[str]]
+    awarding_agency_name: Mapped[Optional[str]] = mapped_column(
+        doc="""The name associated with a department or establishment of the
+        Government as used in the Treasury Account Fund Symbol (TAFS). See See
+        https://files.usaspending.gov/reference_data/agency_codes.csv (AGENCY
+        NAME column)."""
+    )
     federal_action_obligation: Mapped[Optional[float]]
     primary_place_of_performance_state_name: Mapped[Optional[str]] = mapped_column(
         doc="""Primary Place of Performance State. Two-letter abbreviation for the state or territory indicating
