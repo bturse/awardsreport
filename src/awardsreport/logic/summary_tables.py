@@ -1,10 +1,14 @@
 from awardsreport import log_config
 from awardsreport.models import Transactions as T
-from awardsreport.schemas import summary_tables_schemas
+from awardsreport.schemas import (
+    FilterStatementSchema,
+    GroupByStatementSchema,
+    LimitStatementSchema,
+)
 from fastapi import Depends
-from sqlalchemy import select, func, desc, Select, and_, true, Column
+from sqlalchemy import select, func, desc, Select, and_, true
 from sqlalchemy.orm import InstrumentedAttribute
-from typing import Any, Annotated, get_args, Optional, TypedDict
+from typing import Any, Annotated
 import logging.config
 
 logging.config.dictConfig(log_config.LOGGING_CONFIG)
@@ -49,7 +53,7 @@ group_by_key_col = {
 
 
 def create_group_by_col_list(
-    schema: summary_tables_schemas.GroupByStatementSchema,
+    schema: GroupByStatementSchema,
 ) -> list[InstrumentedAttribute]:
     """Generate list of ORM mapped columns to group by.
 
@@ -67,9 +71,7 @@ def create_group_by_col_list(
     return group_by_col_list
 
 
-def create_filter_statement(
-    schema: Annotated[summary_tables_schemas.FilterStatementSchema, Depends()]
-) -> Any:
+def create_filter_statement(schema: Annotated[FilterStatementSchema, Depends()]) -> Any:
     """Combine filters using and to create filter statement for SQLAlchemy Select.
 
     Combines all filters using AND logic.
@@ -91,9 +93,9 @@ def create_filter_statement(
 
 
 def create_group_by_sum_filter_limit_statement(
-    group_by_schema: summary_tables_schemas.GroupByStatementSchema,
-    filter_schema: summary_tables_schemas.FilterStatementSchema,
-    limit_schema: summary_tables_schemas.LimitStatementSchema,
+    group_by_schema: GroupByStatementSchema,
+    filter_schema: FilterStatementSchema,
+    limit_schema: LimitStatementSchema,
 ) -> Select:
     """Create SQLAlchemy Select using provided group by, filter, and limit values.
 

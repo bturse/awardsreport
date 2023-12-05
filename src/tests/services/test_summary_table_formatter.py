@@ -1,6 +1,15 @@
-from awardsreport.services import summary_table_formatter
-from awardsreport.schemas import summary_tables_schemas
-from awardsreport.logic import summary_tables
+from awardsreport.services import (
+    create_schema_field_dict,
+    create_data_schema_list,
+    create_table_schema_response,
+)
+from awardsreport.schemas import (
+    GroupByStatementSchema,
+    FilterStatementSchema,
+    LimitStatementSchema,
+)
+
+from awardsreport.logic import create_group_by_sum_filter_limit_statement
 from tests.factories import TransactionsFactory
 from sqlalchemy.orm import Session
 from awardsreport.database import engine
@@ -34,12 +43,8 @@ def test_data():
 
 
 def test_create_schema_field_dict():
-    group_by_statement_schema = summary_tables_schemas.GroupByStatementSchema(
-        gb=["atc", "awag"]
-    )
-    results = summary_table_formatter.create_schema_field_dict(
-        group_by_statement_schema
-    )
+    group_by_statement_schema = GroupByStatementSchema(gb=["atc", "awag"])
+    results = create_schema_field_dict(group_by_statement_schema)
     expected_results = {
         "fields": [
             {"name": "atc", "title": "Assistance Type Code", "type": "string"},
@@ -51,16 +56,16 @@ def test_create_schema_field_dict():
 
 
 def test_create_data_schema_list(db_session: Session, test_data):
-    group_by_schema = summary_tables_schemas.GroupByStatementSchema(gb=["awag", "cfda"])
-    filter_schema = summary_tables_schemas.FilterStatementSchema()
-    limit_schema = summary_tables_schemas.LimitStatementSchema()
-    stmt = summary_tables.create_group_by_sum_filter_limit_statement(
+    group_by_schema = GroupByStatementSchema(gb=["awag", "cfda"])
+    filter_schema = FilterStatementSchema()
+    limit_schema = LimitStatementSchema()
+    stmt = create_group_by_sum_filter_limit_statement(
         group_by_schema, filter_schema, limit_schema
     )
     with Session(engine) as sess:
         sess.add_all(test_data)
         results = sess.execute(stmt)
-    results = summary_table_formatter.create_data_schema_list(group_by_schema, results)
+    results = create_data_schema_list(group_by_schema, results)
     expected_results = [
         {"awag": "agency1", "cfda": "cfda1", "obligations": 4.0},
         {"awag": "agency1", "cfda": "cfda2", "obligations": 3.0},
@@ -70,18 +75,16 @@ def test_create_data_schema_list(db_session: Session, test_data):
 
 
 def test_create_table_schema_response(db_session: Session, test_data):
-    group_by_schema = summary_tables_schemas.GroupByStatementSchema(gb=["awag", "cfda"])
-    filter_schema = summary_tables_schemas.FilterStatementSchema()
-    limit_schema = summary_tables_schemas.LimitStatementSchema()
-    stmt = summary_tables.create_group_by_sum_filter_limit_statement(
+    group_by_schema = GroupByStatementSchema(gb=["awag", "cfda"])
+    filter_schema = FilterStatementSchema()
+    limit_schema = LimitStatementSchema()
+    stmt = create_group_by_sum_filter_limit_statement(
         group_by_schema, filter_schema, limit_schema
     )
     with Session(engine) as sess:
         sess.add_all(test_data)
         results = sess.execute(stmt)
-    results = summary_table_formatter.create_table_schema_response(
-        group_by_schema, results
-    )
+    results = create_table_schema_response(group_by_schema, results)
     expected_results = {
         "schema": {
             "fields": [

@@ -8,7 +8,12 @@ from awardsreport.models import (
     ProcurementTransactionsMixin,
     TransactionsMixin,
 )
-from awardsreport.schemas import seed_helpers_schemas
+from awardsreport.schemas import (
+    AwardsPayload,
+    AwardsPayloadFilterAgencies,
+    AwardsPayloadFilterDateRange,
+    AwardsPayloadFilters,
+)
 
 
 file_types = Literal["assistance", "procurement"]
@@ -124,7 +129,7 @@ def get_date_ranges(
 
 def get_awards_payloads(
     year: int, month: int, no_months: int, period_months: int
-) -> list[seed_helpers_schemas.AwardsPayload]:
+) -> list[AwardsPayload]:
     """Generate payloads for USAs awards download for full months no_months
     before the last day of the specified month.
 
@@ -139,19 +144,19 @@ def get_awards_payloads(
     returns list[seed_helpers_schemas.AwardsPayload]for api/v2/bulk_downloads/awards/
     """
     return [
-        seed_helpers_schemas.AwardsPayload(
+        AwardsPayload(
             columns=list(
                 set(get_raw_columns(AssistanceTransactions))
                 | set(get_raw_columns(ProcurementTransactions))
             ),
-            filters=seed_helpers_schemas.AwardsPayloadFilters(
+            filters=AwardsPayloadFilters(
                 prime_award_types=PRIME_AWARD_TYPES,
                 date_type="action_date",
-                date_range=seed_helpers_schemas.AwardsPayloadFilterDateRange(
+                date_range=AwardsPayloadFilterDateRange(
                     start_date=start_date,
                     end_date=end_date,
                 ),
-                agencies=[seed_helpers_schemas.AwardsPayloadFilterAgencies()],
+                agencies=[AwardsPayloadFilterAgencies()],
             ),
         )
         for start_date, end_date in get_date_ranges(
