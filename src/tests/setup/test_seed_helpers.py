@@ -5,7 +5,7 @@ from awardsreport.models import (
     AssistanceTransactions,
     ProcurementTransactions,
 )
-from datetime import date
+from datetime import datetime
 
 
 def test_get_raw_columns_invalid_table():
@@ -60,14 +60,19 @@ def test_get_raw_columns_procurement():
 
 def test_get_date_ranges():
     # test simple default
-    result = seed_helpers.get_date_ranges(2010, 1)
+    result = seed_helpers.get_date_ranges(
+        start_date="2009-01-01", end_date="2010-01-31"
+    )
     expected_result = [
         ("2009-01-01", "2009-12-31"),
         ("2010-01-01", "2010-01-31"),
     ]
     assert result == expected_result
+
     # test default ending on leap day
-    result = seed_helpers.get_date_ranges(2016, 2)
+    result = seed_helpers.get_date_ranges(
+        start_date="2015-02-01", end_date="2016-02-29"
+    )
     expected_result = [
         ("2015-02-01", "2016-01-31"),
         ("2016-02-01", "2016-02-29"),
@@ -75,35 +80,38 @@ def test_get_date_ranges():
     assert result == expected_result
 
     # test < 12 months spanning across years
-    result = seed_helpers.get_date_ranges(2010, 1, 4)
+    result = seed_helpers.get_date_ranges(
+        start_date="2009-10-01", end_date="2010-01-31"
+    )
     expected_result = [("2009-10-01", "2010-01-31")]
     assert result == expected_result
 
     # test leap year on non middle tuple
-    result = seed_helpers.get_date_ranges(2014, 2, 48, 6)
+    result = seed_helpers.get_date_ranges(
+        start_date="2010-03-01", end_date="2014-02-28"
+    )
     expected_result = [
-        ("2010-03-01", "2010-08-31"),
-        ("2010-09-01", "2011-02-28"),
-        ("2011-03-01", "2011-08-31"),
-        ("2011-09-01", "2012-02-29"),
-        ("2012-03-01", "2012-08-31"),
-        ("2012-09-01", "2013-02-28"),
-        ("2013-03-01", "2013-08-31"),
-        ("2013-09-01", "2014-02-28"),
+        ("2010-03-01", "2011-02-28"),
+        ("2011-03-01", "2012-02-29"),
+        ("2012-03-01", "2013-02-28"),
+        ("2013-03-01", "2014-02-28"),
     ]
     assert result == expected_result
 
-    # test invalid no_months
-    with pytest.raises(ValueError):
-        seed_helpers.get_date_ranges(
-            date.today().year, date.today().month - 1, no_months=0
-        )
+    # test default end_date = today
+    result = seed_helpers.get_date_ranges(start_date="2024-01-01")
+    assert result[-1][-1] == datetime.today().strftime("%Y-%m-%d")
 
-    # test invalid period_months
-    with pytest.raises(ValueError):
-        seed_helpers.get_date_ranges(
-            date.today().year, date.today().month - 1, period_months=13
-        )
+    # test start_date before end_date
+    with pytest.raises(ValueError) as e:
+        seed_helpers.get_date_ranges(start_date="2024-01-02", end_date="2024-01-01")
+
+    # test final period less than 1 year on leapday.
+    result = seed_helpers.get_date_ranges(
+        start_date="2019-01-01", end_date="2020-02-29"
+    )
+    expected_result = [("2019-01-01", "2019-12-31"), ("2020-01-01", "2020-02-29")]
+    assert result == expected_result
 
 
 def test_get_awards_payload():
@@ -116,7 +124,7 @@ def test_get_awards_payload():
             "file_format": "csv",
             "filters": {
                 "agencies": [{"name": "All", "tier": "toptier", "type": "awarding"}],
-                "date_range": {"end_date": "2023-09-30", "start_date": "2022-10-01"},
+                "date_range": {"start_date": "2022-10-01", "end_date": "2023-09-30"},
                 "date_type": "action_date",
                 "prime_award_types": seed_helpers.PRIME_AWARD_TYPES,
             },
@@ -129,13 +137,15 @@ def test_get_awards_payload():
             "file_format": "csv",
             "filters": {
                 "agencies": [{"name": "All", "tier": "toptier", "type": "awarding"}],
-                "date_range": {"end_date": "2023-10-31", "start_date": "2023-10-01"},
+                "date_range": {"start_date": "2023-10-01", "end_date": "2023-10-31"},
                 "date_type": "action_date",
                 "prime_award_types": seed_helpers.PRIME_AWARD_TYPES,
             },
         },
     ]
-    results = seed_helpers.get_awards_payloads(2023, 10, 13, 12)
+    results = seed_helpers.get_awards_payloads(
+        start_date="2022-10-01", end_date="2023-10-31"
+    )
     assert results == expected_results
 
 

@@ -1,6 +1,6 @@
-from datetime import date
+from datetime import date, datetime
 from dateutil.relativedelta import relativedelta
-from typing import Literal, get_args, Tuple, Dict, List, Type
+from typing import Literal, get_args, Tuple, Dict, List, Type, Optional
 from awardsreport.models import (
     AssistanceTransactions,
     AssistanceTransactionsMixin,
@@ -11,11 +11,6 @@ from awardsreport.models import (
 from awardsreport.schemas import seed_helpers_schemas
 
 
-file_types = Literal["assistance", "procurement"]
-TODAY = date.today()
-YEAR = TODAY.year
-MONTH = TODAY.month - 1
-VALID_FILE_TYPES: Tuple[file_types, ...] = get_args(file_types)
 USER_AGENT = {"User-Agent": "Mozilla/5.0"}
 PRIME_AWARD_TYPES = [
     "A",
@@ -72,69 +67,62 @@ def get_raw_columns(
 
 
 def get_date_ranges(
-    year: int,
-    month: int,
-    no_months: int = 13,
-    period_months: int = 12,
-) -> list[tuple[str, str]]:
+    start_date: str, end_date: Optional[str] = None
+) -> List[Tuple[str, str]]:
     """Get list of date ranges for start_date and end_date parameters for
     api/v2/bulk_downloads/awards.
 
-    The last date in the last tuple is the last day of the specified month in
-    the specified year. The first date in the first tuple is the first day of
-    the month no_months before the last date. The last date of each tuple is
-    less than 1 year after the first date. This is necessary since the
-    api/v2/bulk_downloads/awards endpoint only accepts date ranges within a
-    year. The first date in each tuple is one day after the last date of the
-    preceding tuple. Dates are formatted as "%Y-%m-%d".
+    The first date of the first tuple is start_date. The last date of the last
+    tuple is end_date. The last date of each tuple is less than 1 year after the
+    first date. This is necessary since the api/v2/bulk_downloads/awards
+    endpoint only accepts date ranges within a year. The first date in each
+    tuple is one day after the last date of the preceding tuple. Dates are
+    formatted as YYYY-MM-DD.
 
     args
-        year int the last year of the last date range.
-        month int the last month of the last date range.
-        no_months int the number of months prior of the first date, default 13
-        period_months int maximum number of months between dates in tuple,
-        default 12
+        start_date: Earliest date in range format as YYYY-MM-DD.
+        end_date: Last date in range format as YYYY-MM-DD.
 
-    raises
-        ValueError if no_months <= 0
-        ValueError if period_months > 12
-
-    returns list[tuple[str, str]]
+    returns
+        list of date ranges, each less than 1 year from start_date to end_date.
     """
-    if no_months <= 0:
-        raise ValueError("no_months must be greater than 0.")
-    if period_months > 12:
-        raise ValueError("period_months must be <= 12")
-    date_ranges = []
-    ymd = "%Y-%m-%d"
-    end_date = date(year, month, 1) + relativedelta(months=1) - relativedelta(days=1)
-    start_date = end_date + relativedelta(days=1) - relativedelta(months=no_months)
-    current_end = (
-        start_date + relativedelta(months=period_months) - relativedelta(days=1)
-    )
-    while current_end < end_date:
-        date_ranges.append((start_date.strftime(ymd), current_end.strftime(ymd)))
-        start_date = current_end + relativedelta(days=1)
-        current_end = (
-            start_date + relativedelta(months=period_months) - relativedelta(days=1)
+    if end_date is None:
+        end_date = datetime.today().strftime("%Y-%m-%d")
+
+    start = datetime.strptime(start_date, "%Y-%m-%d").date()
+    end = datetime.strptime(end_date, "%Y-%m-%d").date()
+
+    if start > end:
+        raise ValueError("start_date must less than or equal to end_date")
+
+    current_start = start
+    date_ranges: List[Tuple[str, str]] = []
+    while current_start < end - relativedelta(years=1):
+        date_ranges.append(
+            (
+                current_start.strftime("%Y-%m-%d"),
+                (
+                    current_start + relativedelta(years=1) - relativedelta(days=1)
+                ).strftime("%Y-%m-%d"),
+            )
         )
-    date_ranges.append((start_date.strftime(ymd), end_date.strftime(ymd)))
+        current_start = current_start + relativedelta(years=1)
+
+    date_ranges.append((current_start.strftime("%Y-%m-%d"), end.strftime("%Y-%m-%d")))
+
     return date_ranges
 
 
 def get_awards_payloads(
-    year: int, month: int, no_months: int, period_months: int
+    start_date: str, end_date: Optional[str] = None
 ) -> list[seed_helpers_schemas.AwardsPayload]:
-    """Generate payloads for USAs awards download for full months no_months
-    before the last day of the specified month.
+    """Generate payloads for USAs awards download from start_date to end_date.
 
     Download data from https://api.usaspending.gov/api/v2/bulk_download/awards/
 
     args
-        year int the last year of the last date range.
-        month int the last month of the last date range.
-        no_months int the number of months prior of the first date.
-        period_months int maximum number of months between payload start_date and end_date
+        start_date: Earliest date in range format as YYYY-MM-DD.
+        end_date: Last date in range format as YYYY-MM-DD.
 
     returns list[seed_helpers_schemas.AwardsPayload]for api/v2/bulk_downloads/awards/
     """
@@ -154,9 +142,7 @@ def get_awards_payloads(
                 agencies=[seed_helpers_schemas.AwardsPayloadFilterAgencies()],
             ),
         )
-        for start_date, end_date in get_date_ranges(
-            year, month, no_months, period_months
-        )
+        for start_date, end_date in get_date_ranges(start_date, end_date)
     ]
 
 

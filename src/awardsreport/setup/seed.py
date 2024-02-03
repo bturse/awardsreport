@@ -4,6 +4,7 @@ from time import sleep
 from zipfile import ZipFile
 from io import BytesIO
 from glob import glob
+from typing import Optional
 import tempfile
 
 import logging.config
@@ -18,15 +19,13 @@ from awardsreport.models import ProcurementTransactions, AssistanceTransactions
 from awardsreport.setup.seed_helpers import (
     get_awards_payloads,
     generate_copy_from_sql,
-    YEAR,
-    MONTH,
     USER_AGENT,
     AWARDS_DL_EP,
 )
 
 
 # this function could be optimized by initiating all downloads at once.
-def awards_usas_to_sql(year, month, no_months, period_months=12):
+def awards_usas_to_sql(start_date: str, end_date: Optional[str] = None):
     """Download all awards data in range from USAspending to sql.
 
     args
@@ -40,7 +39,7 @@ def awards_usas_to_sql(year, month, no_months, period_months=12):
     def get_status(status_url):
         return requests.get(status_url, headers=USER_AGENT).json()["status"]
 
-    payloads = get_awards_payloads(year, month, no_months, period_months)
+    payloads = get_awards_payloads(start_date, end_date)
     logger.info(
         f"payload filter date ranges: {[payload.filters.date_range for payload in payloads]}"
     )
@@ -91,10 +90,22 @@ def awards_usas_to_sql(year, month, no_months, period_months=12):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--year", type=int, default=YEAR)
-    parser.add_argument("--month", type=int, default=MONTH)
-    parser.add_argument("--no_months", type=int, default=13)
-    parser.add_argument("--period_months", type=int, default=12)
+    parser = argparse.ArgumentParser(
+        description="Download all prime award transaction data from USAspending within specified date range"
+    )
+    parser.add_argument(
+        "-s",
+        metavar="start_date",
+        type=str,
+        help="YYYY-MM-DD Filter transactions by action_date >= (required).",
+        required=True,
+    )
+    parser.add_argument(
+        "-e",
+        metavar="end_date",
+        type=str,
+        help="YYYY-MM-DD Filter transactions by action_date <= (default = today).",
+        required=False,
+    )
     args = parser.parse_args()
-    awards_usas_to_sql(args.year, args.month, args.no_months, args.period_months)
+    awards_usas_to_sql(args.s, args.e)
