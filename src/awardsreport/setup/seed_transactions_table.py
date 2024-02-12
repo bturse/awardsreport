@@ -1,4 +1,4 @@
-from sqlalchemy import select, column, text
+from sqlalchemy import select, column, union_all, literal_column
 from awardsreport.database import sess, Base
 
 from awardsreport.models import (
@@ -12,8 +12,8 @@ from awardsreport.models import (
 
 
 def get_tx_cols_none(mixin=None):
-    mixin_cols = [column(col) for col in mixin.__annotations__.keys()]
-    return ", ".join(f"NULL as {col}" for col in mixin_cols)
+    mixin_cols = [col for col in mixin.__annotations__.keys()]
+    return [literal_column("NULL").label(col) for col in mixin_cols]
 
 
 tx_mixin_cols = [column(col) for col in TransactionsMixin.__annotations__.keys()]
@@ -27,27 +27,25 @@ tx_asst_mixin_cols = [
     column(col) for col in AssistanceTransactionsMixin.__annotations__.keys()
 ]
 
+
 if __name__ == "__main__":
     session = sess()
 
-    sel = (
-        select(
-            *tx_mixin_cols,
-            *tx_deriv_cols,
-            *tx_proc_mixin_cols,
-            text(get_tx_cols_none(AssistanceTransactionsMixin)),
-        )
-        .select_from(ProcurementTransactions)
-        .union_all(
-            select(
-                *tx_mixin_cols,
-                *tx_deriv_cols,
-                text(get_tx_cols_none(ProcurementTransactionsMixin)),
-                *tx_asst_mixin_cols,
-            ).select_from(AssistanceTransactions)
-        )
-    )
+    asst_tx_sel = select(
+        *tx_mixin_cols,
+        *tx_deriv_cols,
+        *get_tx_cols_none(ProcurementTransactionsMixin),
+        *tx_asst_mixin_cols,
+    ).select_from(AssistanceTransactions)
 
+    proc_tx_sel = select(
+        *tx_mixin_cols,
+        *tx_deriv_cols,
+        *tx_proc_mixin_cols,
+        *get_tx_cols_none(AssistanceTransactionsMixin),
+    ).select_from(ProcurementTransactions)
+
+    sel = asst_tx_sel.union_all(proc_tx_sel)
     session.execute(
         Base.metadata.tables["transactions"].insert()
         # the last column in transactions is id, it should not be inserted.

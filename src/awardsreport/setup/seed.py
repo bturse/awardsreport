@@ -26,12 +26,11 @@ from awardsreport.setup.seed_helpers import (
 
 # this function could be optimized by initiating all downloads at once.
 def awards_usas_to_sql(start_date: str, end_date: Optional[str] = None):
-    """Download all awards data in range from USAspending to sql.
+    """Download all awards data in date range from USAspending to sql.
 
     args
-        year int the last year of the date range.
-        month int the last month of the date range.
-        no_months int the number of months prior to the specified month.
+        start_date: Earliest date in range format as YYYY-MM-DD.
+        end_date: Last date in range format as YYYY-MM-DD.
 
     return None
     """
@@ -49,44 +48,55 @@ def awards_usas_to_sql(start_date: str, end_date: Optional[str] = None):
     logger.info(f"conn: {conn}")
     logger.info(f"cursor: {conn}")
 
+    status_file_urls = []
+
     for payload in payloads:
+        logger.info(AWARDS_DL_EP)
+        logger.info(payload.dict())
         r = requests.post(AWARDS_DL_EP, json=payload.dict(), headers=USER_AGENT).json()
         logger.info(f"date_range: [{payload.filters.date_range}]")
         logger.info(f"file_url: {r['file_url']}")
         logger.info(f"status_url: {r['status_url']}")
-        status = get_status(r["status_url"])
+        status_file_urls.append((r["status_url"], r["file_url"]))
+        sleep(60)
+
+    logger.info(f"status_file_urls: {status_file_urls}")
+
+    for status_url, file_url in status_file_urls:
+        status = get_status(status_url)
+        logger.info(status_url)
         logger.info(f"status: {status}")
         logger.info("entering request rest loop")
         while status not in ("failed", "finished"):
             sleep(300)
-            status = get_status(r["status_url"])
+            status = get_status(status_url)
 
         if status == "failed":
             logger.error("status == 'failed' raising Exception('download failed')")
             raise Exception("download failed")
         if status == "finished":
             logger.info(f"status: {status}")
-            logger.info(f"requesting: {r['file_url']}")
+            logger.info(f"requesting: {file_url}")
             try:
-                file = requests.get(r["file_url"], stream=True)
-                with tempfile.TemporaryDirectory() as raw_data:
-                    logger.info(f"temp: {raw_data}")
-                    with ZipFile(BytesIO(file.content), "r") as zip_ref:
-                        logger.info("extracting zip data")
-                        zip_ref.extractall(raw_data)
-                        files = glob("*.csv", root_dir=raw_data)
-                        logger.info(f"files: {files}")
+                file = requests.get(file_url, stream=True)
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    with tempfile.TemporaryFile(temp_dir) as temp_file:
+                        logger.info(f"temp_file: {temp_file}")
+                        for chunk in file.iter_content(512):
+                            temp_file.write(chunk)
+                        with ZipFile(temp_file, "r") as zip_ref:
+                            files = glob("*.csv", root_dir=temp_dir)
+                            logger.info(f"files: {files}")
+                            zip_ref.extractall(temp_dir)
                         for file in files:
                             logger.info(f"file: {file}")
                             copy_cmd = generate_copy_from_sql(file)
-
                             logger.info(f"copy_cmd: {copy_cmd}")
-                            with open(f"{raw_data}/{file}", "r") as f:
-                                cursor.copy_expert(copy_cmd, f)
-                                conn.commit()
-                                logger.info("commit completed")
+                            cursor.copy_expert(copy_cmd, temp_file)
+                            conn.commit()
+                            logger.info("commit completed")
             except Exception:
-                raise Exception(f"Unable to import {r['file_url']}")
+                raise Exception(f"Unable to import {file_url}")
 
 
 if __name__ == "__main__":
