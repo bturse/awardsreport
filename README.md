@@ -5,8 +5,8 @@ spending by various elements for each month.
 
 
 ## Requires
-- python 3.10
-- PostgreSQL
+- python 3.10.11
+- PostgreSQL 15
 
 ## Setup and Installation
 1. install requirements: `pip install -r requirements.txt` and `pip install .`
