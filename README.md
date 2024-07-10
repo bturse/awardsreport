@@ -5,19 +5,19 @@ spending by various elements for each month.
 
 
 ## Requires
-- python 3.10
-- PostgreSQL
+- python 3.10.11
+- PostgreSQL 15
 
 ## Setup and Installation
 1. install requirements: `pip install -r requirements.txt` and `pip install .`
 2. create a psql database
 3. set database information: `mv .env.example .env`, update values in `.env`
 4. run alembic migrations: `alembic upgrade head`
-5. seed the database with raw data from USAs: `python src/awardsreport/setup/seed.py`. Accepts optional
-`--year`, `--month`, `no_months`, and `period_months` int parameters.
-6. run derivations: `python src/awardsreport/setup/transaction_derivations.py`
-7. insert records to `transansactions` table: `python src/awardsreport/setup/seed_transactions_table`
-8. run server on localhost: `python src/awardreport/main.py`
+5. seed the database with raw data from USAs: `python src/awardsreport/setup/seed.py`.
+ See `python src/awardsreport/setup/seed.py -h`
+6. run derivations: `python src/awardsreport/setup/transaction_derivations.py`.
+7. insert records to `transansactions` table: `python src/awardsreport/setup/seed_transactions_table.py`
+8. run server on localhost: `python src/awardsreport/main.py`
 
 ## Example Usage
 Using the `summary_tables` GET endpoint to populate a pandas DataFrame:

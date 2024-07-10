@@ -112,11 +112,19 @@ def set_award_summary_unique_key(
 if __name__ == "__main__":
     session = sess()
     with session.begin():
-        session.execute(set_generated_pragmatic_obligations(AssistanceTransactions))
+        # generated_pragmatic_obligations exists in assistance_transactions
+        # source file.
+
+        # This derivation could be removed if federal_action_obligation was
+        # selected as generated_pragmatic_obligations when populating
+        # transactions table.
         session.execute(set_generated_pragmatic_obligations(ProcurementTransactions))
 
         session.execute(set_action_date_year_month(AssistanceTransactions))
         session.execute(set_action_date_year_month(ProcurementTransactions))
 
+        # these derivations could be removed if contract_award_unique_key and
+        # assistance_award_unique_key were selected as award_summary_unique_key
+        # when populating transactions table.
         session.execute(set_award_summary_unique_key(AssistanceTransactions))
         session.execute(set_award_summary_unique_key(ProcurementTransactions))
