@@ -4,18 +4,20 @@ from USAspending.gov to provide information on the top categories receiving
 spending by various elements for each month.
 
 ## Required
-Docker (with Docker Compose v2)
+- Docker
+- Docker Compose v2
 
 ## Setup and Installation
-```
-1. Build images: `docker compose build`
-2. Start the database: `docker compose up -d postgres`
-3. Run database migrations: `docker compose run --rm app alembic upgrade head`
-4. Seed the database with USAspending data: ex: `docker compose run --rm app \
-  python src/awardsreport/setup/seed.py --year 2025 --month 12 --no_months 3` (see: `docker compose run --rm app python src/awardsreport/setup/seed.py -h`)
-5. Run derivation and populate transactions table: `docker compose run --rm app python src/awardsreport/setup/transaction_derivations.py
-docker compose run --rm app python src/awardsreport/setup/seed_transactions_table.py`
-6. Start the API server `docker compose up app`
+1. Build images and start Postgres: `docker compose up -d --build postgres`
+2. Run database migrations: `docker compose run --rm app alembic upgrade head`
+3. Seed data from USAspending: `docker compose run --rm app python src/awardsreport/setup/seed.py -s 2023-10-01 -e 2023-10-31`
+4. Run derivations: `docker compose run --rm app python src/awardsreport/setup/transaction_derivations.py`
+5. Populate the transactions table: `docker compose run --rm app python src/awardsreport/setup/seed_transactions_table.py`
+6. Run the API: `docker compose up app`
+
+- API: http://localhost:8000
+- OpenAPI docs: http://localhost:8000/docs
+
 
 ## Running Tests
 `docker compose -p awards-test run --rm app pytest`
@@ -114,7 +116,7 @@ equality with an element that can be grouped by, use the same key from
 match the key of the dict item from the previous set. If the filter merely
 checks for equality, the Query description should call the SQLAlchemy model
 element doc.
-4. run tests: `pytest`
+4. run tests
 
 
 ## License

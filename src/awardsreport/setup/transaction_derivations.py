@@ -14,40 +14,65 @@ from awardsreport import log_config
 logging.config.dictConfig(log_config.LOGGING_CONFIG)
 logger = logging.getLogger("awardsreport")
 
+from sqlalchemy import update, case, func, Update
+from typing import Type
+from awardsreport.models import (
+    AssistanceTransactions,
+    ProcurementTransactions,
+)
+
 
 def set_generated_pragmatic_obligations(
     table: Type[AssistanceTransactions] | Type[ProcurementTransactions],
 ) -> Update:
-    """Set generated_pragmatic_obligations on assistance_transactions and
-    procurement_transactions.
+    """Set generated_pragmatic_obligations on AssistanceTransactions and
+    ProcurementTransactions.
 
-    assistance_transactions.generated_pragmatic_obligations =
-    assistance_transactions.original_loan_subsidy_cost for loans
-    (assistance_transactions.assistance_type_code = '07' or '08') or
-    federal_action_obligation for non-loans.
+    For AssistanceTransactions:
+      - If assistance_type_code indicates a loan ('07' or '08'), use
+        original_loan_subsidy_cost.
+      - Otherwise, use federal_action_obligation.
+      - In all cases, COALESCE to 0.0 to guarantee a non-null value.
+
+    For ProcurementTransactions:
+      - Use federal_action_obligation, COALESCE'd to 0.0.
 
     args
-        table: Type[AssistanceTransactions] | Type[ProcurementTransactions] the
-            table to set generated_pragmatic_obligations.
-    raises
-        ValueError if table not AssistanceTransactions or ProcurementTransactions
+        table: Type[AssistanceTransactions] | Type[ProcurementTransactions]
+            The table to update.
 
-    return sqlalchemy.Update to be executed to perform derivations.
+    raises
+        ValueError if table is not AssistanceTransactions or ProcurementTransactions.
+
+    return
+        sqlalchemy.Update to be executed to perform the derivation.
     """
     if table == AssistanceTransactions:
         return update(AssistanceTransactions).values(
             generated_pragmatic_obligations=case(
                 (
                     AssistanceTransactions.assistance_type_code.in_(("07", "08")),
-                    AssistanceTransactions.original_loan_subsidy_cost,
+                    func.coalesce(
+                        AssistanceTransactions.original_loan_subsidy_cost,
+                        AssistanceTransactions.federal_action_obligation,
+                        0.0,
+                    ),
                 ),
-                else_=AssistanceTransactions.federal_action_obligation,
+                else_=func.coalesce(
+                    AssistanceTransactions.federal_action_obligation,
+                    0.0,
+                ),
             )
         )
+
     elif table == ProcurementTransactions:
         return update(ProcurementTransactions).values(
-            generated_pragmatic_obligations=ProcurementTransactions.federal_action_obligation
+            generated_pragmatic_obligations=func.coalesce(
+                ProcurementTransactions.federal_action_obligation,
+                0.0,
+            )
         )
+
     else:
         raise ValueError(
             "table must be AssistanceTransactions or ProcurementTransactions"
@@ -115,16 +140,11 @@ if __name__ == "__main__":
         # generated_pragmatic_obligations exists in assistance_transactions
         # source file.
 
-        # This derivation could be removed if federal_action_obligation was
-        # selected as generated_pragmatic_obligations when populating
-        # transactions table.
         session.execute(set_generated_pragmatic_obligations(ProcurementTransactions))
+        session.execute(set_generated_pragmatic_obligations(AssistanceTransactions))
 
         session.execute(set_action_date_year_month(AssistanceTransactions))
         session.execute(set_action_date_year_month(ProcurementTransactions))
 
-        # these derivations could be removed if contract_award_unique_key and
-        # assistance_award_unique_key were selected as award_summary_unique_key
-        # when populating transactions table.
         session.execute(set_award_summary_unique_key(AssistanceTransactions))
         session.execute(set_award_summary_unique_key(ProcurementTransactions))

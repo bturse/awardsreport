@@ -47,7 +47,7 @@ def _payload_for_log(payload_dict: dict[str, Any]) -> dict[str, Any]:
     return d
 
 
-def awards_usas_to_sql(year, month, no_months, period_months=12):
+def awards_usas_to_sql(start_date: str, end_date: Optional[str] = None):
     def get_status(status_url):
         logger.info(f"GET status: {status_url}")
         resp = requests.get(status_url, headers=USER_AGENT, timeout=60)
@@ -56,7 +56,7 @@ def awards_usas_to_sql(year, month, no_months, period_months=12):
         logger.info(f"status response: {j}")
         return j["status"]
 
-    payloads = get_awards_payloads(year, month, no_months, period_months)
+    payloads = get_awards_payloads(start_date, end_date)
     logger.info("Starting seed run")
     logger.info(f"payload count: {len(payloads)}")
     logger.info(
