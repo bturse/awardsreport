@@ -1,5 +1,5 @@
 import argparse
-import os
+import logging
 import requests
 from time import sleep
 from zipfile import ZipFile
@@ -7,16 +7,16 @@ from io import BytesIO
 from glob import glob
 from typing import Optional
 import tempfile
+import json
+import time
+from typing import Any, Mapping
 
-import logging.config
-from awardsreport import log_config
+from awardsreport.logging_setup import setup_logging
 
-logging.config.dictConfig(log_config.LOGGING_CONFIG)
-logger = logging.getLogger("awardsreport")
+setup_logging()
+logger = logging.getLogger(__name__)
 
-
-from awardsreport.database import engine, Base
-from awardsreport.models import ProcurementTransactions, AssistanceTransactions
+from awardsreport.database import engine
 from awardsreport.setup.seed_helpers import (
     get_awards_payloads,
     generate_copy_from_sql,
@@ -25,140 +25,116 @@ from awardsreport.setup.seed_helpers import (
 )
 
 
-# https://github.com/python/cpython/pull/29560
-class SpooledTemporaryFile(tempfile.SpooledTemporaryFile):
-    def seekable(self) -> bool:
-        return super()._file.seekable()
+def _sanitize_headers(h: Mapping[str, str]) -> dict[str, str]:
+    # You only have User-Agent now, but this prevents future “oops we logged tokens”.
+    redacted = {}
+    for k, v in h.items():
+        if k.lower() in {"authorization", "x-api-key"}:
+            redacted[k] = "***REDACTED***"
+        else:
+            redacted[k] = v
+    return redacted
+
+
+def _payload_for_log(payload_dict: dict[str, Any]) -> dict[str, Any]:
+    d = dict(payload_dict)  # shallow copy
+
+    cols = d.get("columns") or []
+    d["columns_count"] = len(cols)
+    d["columns_sample"] = cols[:10]
+    d.pop("columns", None)
+
+    return d
 
 
 def awards_usas_to_sql(start_date: str, end_date: Optional[str] = None):
-    """Download all awards data in date range from USAspending to sql.
-
-    args
-        start_date: Earliest date in range format as YYYY-MM-DD.
-        end_date: Last date in range format as YYYY-MM-DD.
-
-    return None
-    """
-
     def get_status(status_url):
-        return requests.get(status_url, headers=USER_AGENT).json()["status"]
+        logger.info(f"GET status: {status_url}")
+        resp = requests.get(status_url, headers=USER_AGENT, timeout=60)
+        resp.raise_for_status()
+        j = resp.json()
+        logger.info(f"status response: {j}")
+        return j["status"]
 
     payloads = get_awards_payloads(start_date, end_date)
+    logger.info("Starting seed run")
+    logger.info(f"payload count: {len(payloads)}")
     logger.info(
-        f"payload filter date ranges: {[payload.filters.date_range for payload in payloads]}"
+        f"payload filter date ranges: {[p.filters.date_range for p in payloads]}"
     )
 
     conn = engine.raw_connection()
     cursor = conn.cursor()
-    logger.info(f"conn: {conn}")
-    logger.info(f"cursor: {conn}")
-
-    status_file_urls = []
+    logger.info("DB connection established; starting downloads")
 
     for payload in payloads:
-        logger.info(AWARDS_DL_EP)
-        logger.info(payload.dict())
-        r = requests.post(AWARDS_DL_EP, json=payload.dict(), headers=USER_AGENT)
-        r.raise_for_status()
-        r = r.json()
-        logger.info(f"date_range: [{payload.filters.date_range}]")
-        logger.info(f"file_url: {r['file_url']}")
-        logger.info(f"status_url: {r['status_url']}")
-        status_file_urls.append((r["status_url"], r["file_url"]))
-        sleep(30)
+        payload_dict = payload.dict()
 
-    logger.info(f"status_file_urls: {status_file_urls}")
+        logger.info(
+            "POST %s headers=%s body=%s",
+            AWARDS_DL_EP,
+            _sanitize_headers(USER_AGENT),
+            json.dumps(_payload_for_log(payload_dict), sort_keys=True),
+        )
 
-    for status_url, file_url in status_file_urls:
+        t0 = time.monotonic()
+        r = requests.post(
+            AWARDS_DL_EP, json=payload_dict, headers=USER_AGENT, timeout=60
+        )
+        dt = time.monotonic() - t0
+
+        logger.info(
+            "POST response status=%s elapsed=%.3fs content_type=%s",
+            r.status_code,
+            dt,
+            r.headers.get("content-type"),
+        )
+
+        if not r.ok:
+            logger.error("POST error body=%s", r.text[:2000])
+            r.raise_for_status()
+
+        j = r.json()
+        logger.info("POST json keys=%s", sorted(j.keys()))
+
+        logger.info(f"date_range: {payload.filters.date_range}")
+        logger.info(f"file_url: {j.get('file_url')}")
+        logger.info(f"status_url: {j.get('status_url')}")
+
+        status_url = j["status_url"]
+        file_url = j["file_url"]
+
         status = get_status(status_url)
-        logger.info(status_url)
-        logger.info(f"status: {status}")
-        logger.info("entering request rest loop")
+        logger.info("Entering poll loop")
+
         while status not in ("failed", "finished"):
+            logger.info(f"status={status}; sleeping 30s")
             sleep(30)
             status = get_status(status_url)
 
         if status == "failed":
-            logger.error("status == 'failed' raising Exception('download failed')")
-            raise Exception("download failed")
+            raise RuntimeError("download failed")
 
-        if status == "finished":
-            logger.info(f"requesting: {file_url}")
-            try:
-                response = requests.get(file_url, stream=True)
-                logger.info(response)
-                logger.info(f"file headers: {response.headers}")
-                response.raise_for_status()
+        logger.info(f"Downloading zip: {file_url}")
+        file = requests.get(file_url, stream=True, timeout=300)
+        file.raise_for_status()
 
-                try:
-                    total_size = int(response.headers["Content-Length"])
-                except ValueError as e:
-                    raise e
+        with tempfile.TemporaryDirectory() as raw_data:
+            logger.info(f"tempdir: {raw_data}")
+            with ZipFile(BytesIO(file.content), "r") as zip_ref:
+                zip_ref.extractall(raw_data)
 
-                logger.info(f"total file size: {total_size}")
-                with tempfile.TemporaryDirectory() as temp_dir:
-                    with SpooledTemporaryFile(
-                        max_size=1024 * 1024 * 100, dir=temp_dir
-                    ) as temp_file:
-                        logger.info(f"temporary file created: {temp_file}")
-                        # chunk_size should be removed if response.iter_content(chunk_size=None)
-                        # also, remove from progress loader.
-                        chunk_size = 1024 * 64
-                        downloaded_size = 0
+            files = glob("*.csv", root_dir=raw_data)
+            logger.info(f"csv files: {files}")
 
-                        for chunk in response.iter_content(chunk_size=chunk_size):
-                            temp_file.write(chunk)
-                            downloaded_size += len(chunk)
+            for csv_name in files:
+                copy_cmd = generate_copy_from_sql(csv_name)
+                logger.info(f"copy_cmd for {csv_name}: {copy_cmd}")
 
-                            if total_size > 0:
-                                progress = (downloaded_size / total_size) * 100
-                                if progress % 10 < (chunk_size / total_size) * 100:
-                                    logger.info(f"download progress: {progress:.2f}%")
-                        logger.info(
-                            f"Downloaded {downloaded_size} of {total_size} bytes"
-                        )
-                        if downloaded_size < total_size:
-                            raise Exception(
-                                f"Downloaded file size {downloaded_size} is less than expected {total_size}"
-                            )
-
-                        logger.info(f"flushing temp file: {temp_file}")
-                        temp_file.flush()
-                        logger.info(f"flush complete")
-                        logger.info(f"seek(0) temp file: {temp_file}")
-                        temp_file.seek(0)
-                        logger.info(f"seek complete")
-                        try:
-                            with ZipFile(temp_file, "r") as zip_ref:
-                                logger.info(
-                                    f"ZIP file content names: {zip_ref.namelist()}"
-                                )
-                                zip_ref.extractall(temp_dir)
-                                logger.info(f"extracted ZIP file to: {temp_dir}")
-                                csv_files = glob(f"{temp_dir}/*.csv", root_dir=temp_dir)
-                                logger.info(f"begin processing csv files")
-                                for csv_file in csv_files:
-                                    logger.info(f"Processing file: {csv_file}")
-                                    with open(csv_file, "r", encoding="utf-8") as f:
-                                        copy_cmd = generate_copy_from_sql(csv_file)
-                                        logger.info(
-                                            f"generated COPY command: {copy_cmd}"
-                                        )
-                                        cursor.copy_expert(copy_cmd, f)
-                                    logger.info(
-                                        f"processing complete for file: {csv_file}"
-                                    )
-                                    logger.info(f"committing file: {csv_file}")
-                                    conn.commit()
-                                    logger.info(f"commit complete for file: {csv_file}")
-                        except Exception as e:
-                            logger.error(e)
-                            raise e
-            except Exception as e:
-                logger.error(e)
-                conn.rollback()
-                raise
+                with open(f"{raw_data}/{csv_name}", "r") as f:
+                    cursor.copy_expert(copy_cmd, f)
+                    conn.commit()
+                    logger.info(f"committed {csv_name}")
 
 
 if __name__ == "__main__":

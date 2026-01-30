@@ -38,28 +38,24 @@ class FilterStatementSchema(BaseModel):
         Optional[list[Literal[atc_values]]],
         Query(
             description=T.assistance_type_code.doc,
-            example=["02", "03"],
         ),
     ] = None
     awag: Annotated[
         Optional[list[str]],
         Query(
             description=T.awarding_agency_code.doc,
-            example=["069", "077"],
         ),
     ] = None
     awid: Annotated[
         Optional[list[str]],
         Query(
             description=T.award_summary_unique_key.doc,
-            example=["CONT_IDV_36F79718D0583_3600", "CONT_IDV_36C10X23D0035_3600"],
         ),
     ] = None
     cfda: Annotated[
         Optional[list[str]],
         Query(
             description=T.cfda_number.doc,
-            example=["19.040", "59.008"],
         ),
     ] = None
     end_date: Annotated[
@@ -67,35 +63,30 @@ class FilterStatementSchema(BaseModel):
         Query(
             description="""('YYYY-MM-DD') Filter for transactions with action
             date on or before this date.""",
-            example=str(date.today()),
         ),
     ] = None
     naics: Annotated[
         Optional[list[str]],
         Query(
             description=T.naics_code.doc,
-            example=["111110", "111120"],
         ),
     ] = None
     ppopct: Annotated[
         Optional[list[str]],
         Query(
             description=T.prime_award_transaction_place_of_performance_county_fips_code.doc,
-            example=["01001", "17097"],
         ),
     ] = None
     ppopst: Annotated[
         Optional[list[str]],
         Query(
             description=f"**Primary Place of Performance State Name**. {T.primary_place_of_performance_state_name.doc}",
-            example=["FL", "GA"],
         ),
     ] = None
     psc: Annotated[
         Optional[list[str]],
         Query(
             description=f"Product or Service Code. {T.product_or_service_code.doc}",
-            example=["1005", "1010"],
         ),
     ] = None
     start_date: Annotated[
@@ -103,28 +94,24 @@ class FilterStatementSchema(BaseModel):
         Query(
             description="""('YYYY-MM-DD') Filter for transactions with action date
         on or after this date.""",
-            example="2023-01-31",
         ),
     ] = None
     uei: Annotated[
         Optional[list[str]],
         Query(
             description=T.recipient_uei.doc,
-            example=["fakeuei1", "fakeuei2"],
         ),
     ] = None
     y: Annotated[
         Optional[list[int]],
         Query(
             description=T.action_date_year.doc,
-            example=[2022, 2023],
         ),
     ] = None
     ym: Annotated[
         Optional[list[str]],
         Query(
             description=T.action_date_year_month.doc,
-            example=["2023-01", "2023-02"],
         ),
     ] = None
 

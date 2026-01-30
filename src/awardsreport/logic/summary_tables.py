@@ -2,7 +2,7 @@ from awardsreport import log_config
 from awardsreport.models import Transactions as T
 from awardsreport.schemas import summary_tables_schemas
 from fastapi import Depends
-from sqlalchemy import select, func, desc, Select, and_, true, Column
+from sqlalchemy import select, func, desc, Select, and_, true, Column, Float
 from sqlalchemy.orm import InstrumentedAttribute
 from typing import Any, Annotated, get_args, Optional, TypedDict
 import logging.config
@@ -68,7 +68,7 @@ def create_group_by_col_list(
 
 
 def create_filter_statement(
-    schema: Annotated[summary_tables_schemas.FilterStatementSchema, Depends()]
+    schema: Annotated[summary_tables_schemas.FilterStatementSchema, Depends()],
 ) -> Any:
     """Combine filters using and to create filter statement for SQLAlchemy Select.
 
@@ -112,7 +112,9 @@ def create_group_by_sum_filter_limit_statement(
     stmt = (
         select(
             *group_by_col_list,
-            func.sum(T.generated_pragmatic_obligations).label("sum_spending"),
+            func.coalesce(func.sum(T.generated_pragmatic_obligations), 0.0)
+            .cast(Float)
+            .label("sum_spending")
         )
         .group_by(*group_by_col_list)
         .where(and_(*[col.isnot(None) for col in group_by_col_list]))

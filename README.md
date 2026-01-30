@@ -3,21 +3,24 @@ The USAspending Monthly Awards Report uses federal prime award transaction data
 from USAspending.gov to provide information on the top categories receiving
 spending by various elements for each month.
 
-
-## Requires
-- python 3.10.11
-- PostgreSQL 15
+## Required
+- Docker
+- Docker Compose v2
 
 ## Setup and Installation
-1. install requirements: `pip install -r requirements.txt` and `pip install .`
-2. create a psql database
-3. set database information: `mv .env.example .env`, update values in `.env`
-4. run alembic migrations: `alembic upgrade head`
-5. seed the database with raw data from USAs: `python src/awardsreport/setup/seed.py`.
- See `python src/awardsreport/setup/seed.py -h`
-6. run derivations: `python src/awardsreport/setup/transaction_derivations.py`.
-7. insert records to `transansactions` table: `python src/awardsreport/setup/seed_transactions_table.py`
-8. run server on localhost: `python src/awardsreport/main.py`
+1. Build images and start Postgres: `docker compose up -d --build postgres`
+2. Run database migrations: `docker compose run --rm app alembic upgrade head`
+3. Seed data from USAspending: `docker compose run --rm app python src/awardsreport/setup/seed.py -s 2023-10-01 -e 2023-10-31`
+4. Run derivations: `docker compose run --rm app python src/awardsreport/setup/transaction_derivations.py`
+5. Populate the transactions table: `docker compose run --rm app python src/awardsreport/setup/seed_transactions_table.py`
+6. Run the API: `docker compose up app`
+
+- API: http://localhost:8000
+- OpenAPI docs: http://localhost:8000/docs
+
+
+## Running Tests
+`docker compose -p awards-test run --rm app pytest`
 
 ## Example Usage
 Using the `summary_tables` GET endpoint to populate a pandas DataFrame:
@@ -113,7 +116,7 @@ equality with an element that can be grouped by, use the same key from
 match the key of the dict item from the previous set. If the filter merely
 checks for equality, the Query description should call the SQLAlchemy model
 element doc.
-4. run tests: `pytest`
+4. run tests
 
 
 ## License

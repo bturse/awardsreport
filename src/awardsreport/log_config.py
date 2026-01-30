@@ -1,33 +1,27 @@
+import os
+
+LOG_FILE = os.getenv("LOG_FILE", "/app/logs/awardsreport.log")
+
 LOGGING_CONFIG = {
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
-        "verbose": {
-            "format": "{levelname} {asctime} {module} {funcName} {lineno} {message}",
-            "style": "{",
-        },
-        "simple": {
-            "format": "{levelname} {message}",
-            "style": "{",
-        },
+        "standard": {"format": "%(asctime)s %(levelname)s %(name)s %(message)s"}
     },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "level": "WARNING",
-            "formatter": "simple",
+            "level": "INFO",
+            "formatter": "standard",
+            "stream": "ext://sys.stdout",
         },
         "file": {
             "class": "logging.FileHandler",
             "level": "INFO",
-            "formatter": "verbose",
-            "filename": "awardsreport.log",
+            "formatter": "standard",
+            "filename": LOG_FILE,
+            "mode": "a",
         },
     },
-    "loggers": {
-        "awardsreport": {  # root logger
-            "level": "DEBUG",
-            "handlers": ["console", "file"],
-        },
-    },
+    "root": {"level": "INFO", "handlers": ["console", "file"]},
 }

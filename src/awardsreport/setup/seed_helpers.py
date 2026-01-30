@@ -9,6 +9,7 @@ from awardsreport.models import (
     TransactionsMixin,
 )
 from awardsreport.schemas import seed_helpers_schemas
+from typing import Any
 
 
 USER_AGENT = {"User-Agent": "Mozilla/5.0"}
@@ -126,12 +127,15 @@ def get_awards_payloads(
 
     returns list[seed_helpers_schemas.AwardsPayload]for api/v2/bulk_downloads/awards/
     """
-    return [
+
+    columns = sorted(
+        set(get_raw_columns(AssistanceTransactions))
+        | set(get_raw_columns(ProcurementTransactions))
+    )
+
+    payloads = [
         seed_helpers_schemas.AwardsPayload(
-            columns=list(
-                set(get_raw_columns(AssistanceTransactions))
-                | set(get_raw_columns(ProcurementTransactions))
-            ),
+            columns=columns,
             filters=seed_helpers_schemas.AwardsPayloadFilters(
                 prime_award_types=PRIME_AWARD_TYPES,
                 date_type="action_date",
@@ -144,6 +148,8 @@ def get_awards_payloads(
         )
         for start_date, end_date in get_date_ranges(start_date, end_date)
     ]
+
+    return payloads
 
 
 def generate_copy_from_sql(
