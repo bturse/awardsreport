@@ -5,3 +5,9 @@
 *.ipynb
 *.DS_Store
 *scratch.*
+
+dbt/**/target/
+dbt/**/compiled/
+dbt/**/dbt_packages/
+dbt/**/logs/
+dbt/**/.user.yml
