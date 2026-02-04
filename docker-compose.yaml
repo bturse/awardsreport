@@ -12,6 +12,18 @@ services:
       interval: 2s
       timeout: 3s
       retries: 30
+    
+  dbt:
+    platform: linux/amd64
+    image: ghcr.io/dbt-labs/dbt-postgres:1.8.2
+    working_dir: /dbt/awards_dbt
+    volumes:
+      - ./dbt:/dbt
+    environment:
+      DBT_PROFILES_DIR: /dbt
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   app:
     build: .
