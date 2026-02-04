@@ -1,0 +1,115 @@
+version: 2
+
+models:
+  - name: stg_transactions
+    description: >
+      Staging model that unifies assistance + procurement transactions and
+      standardizes types/fields used by downstream analytics and the API.
+
+    columns:
+      - name: transaction_unique_key
+        description: |
+          Assistance Transactions - system-generated database key used to
+          uniquely identify each financial assistance transaction record and
+          facilitate record lookup, correction, and deletion. A concatenation of
+          AwardingSubTierAgencyCode, FAIN, URI, CFDA_Number, and
+          AwardModificationAmendmentNumber with a single underscore ('_')
+          character inserted in between each. If a field is blank, it is recorded
+          as "-none-".
+
+          Procurement Transactions - Derived element and system-generated database key used to
+          uniquely identify each contract transaction record and facilitate record
+          lookup, correction, and deletion. A concatenation of agencyID,
+          Referenced IDV Agency Identifier, PIID,
+          AwardModificationAmendmentNumber, ParentAwardId, and Transaction Number,
+          with a single underscore ('_') character inserted in between each. If a
+          field is blank, it is recorded as "-none-". agencyID is an FPDS field
+          that captures the Agency or SubTier Agency that submitted the
+          transaction to FPDS (often distinct from the awarding agency). For
+          contract IDV records, only agencyID, PIID, and
+          AwardModificationAmendmentNumber are part of the unique key, even if
+          additional fields in the key are present in the IDV record; the rest of
+          the fields are recorded as "-none-" for unique key purposes.
+          Example: 9700_-none-FA440706C0001_P00007-none-_0.
+        tests:
+          - not_null
+          - unique
+
+      - name: award_summary_unique_key
+        description: "Unified award key (assistance_award_unique_key or contract_award_unique_key)."
+        tests:
+          - not_null
+
+      - name: action_date
+        description: "The date the action being reported was issued / signed by the Government or a binding agreement was reached."
+        tests:
+          - not_null
+
+      - name: awarding_agency_name
+        description: |
+          The name associated with a department or establishment of the
+          Government as used in the Treasury Account Fund Symbol (TAFS).
+          See https://files.usaspending.gov/reference_data/agency_codes.csv (AGENCY NAME column).
+        tests:
+          - not_null
+
+      - name: cfda_number
+        description: |
+          The number assigned to an Assistance Listing in SAM.gov.
+          See https://sam.gov/content/assistance-listings
+
+      - name: cfda_title
+        description: |
+          The title of the Assistance Listing under which the Federal award was funded in SAM.gov.
+          See https://sam.gov/content/assistance-listings
+
+      - name: generated_pragmatic_obligations
+        description: |
+          Obligations measure used for aggregation. For assistance loans, use original_loan_subsidy_cost;
+          otherwise federal_action_obligation. For procurement, use federal_action_obligation.
+        tests:
+          - not_null
+
+      - name: naics_code
+        description: |
+          The identifier that represents the North American Industry Classification System (NAICS) Code
+          assigned to the solicitation and resulting award. See https://www.census.gov/naics/
+
+      - name: naics_description
+        description: |
+          The title associated with the NAICS Code. See https://www.census.gov/naics/
+
+      - name: product_or_service_code
+        description: |
+          The code that best identifies the product or service procured.
+          Codes are defined in the Product and Service Codes Manual.
+          See https://www.acquisition.gov/psc-manual
+
+      - name: product_or_service_code_description
+        description: |
+          Description that explains the meaning of the code provided in the Product or Service Code field.
+          See https://www.acquisition.gov/psc-manual
+
+      - name: recipient_uei
+        description: |
+          The Unique Entity Identifier (UEI) for an awardee or recipient.
+          See https://sam.gov/content/entity-information
+
+      - name: recipient_name
+        description: |
+          The name of the awardee or recipient that relates to the unique identifier.
+          See https://sam.gov/content/entity-information
+        tests:
+          - not_null
+
+      - name: source_table
+        description: "Whether the transaction originates from the assistance or procurement source file."
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["assistance", "procurement"]
+
+      - name: usaspending_permalink
+        description: "URL of award profile for this record on USAspending.gov"
+        tests:
+          - not_null
