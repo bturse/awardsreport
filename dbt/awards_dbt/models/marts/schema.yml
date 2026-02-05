@@ -1,0 +1,70 @@
+version: 2
+
+models:
+  - name: mart_top10_spend_by_dim_fq
+    description: >
+      Top 10 spending entities per fiscal year / fiscal quarter, broken out by
+      dimension type (agency, cfda, naics, psc, recipient, award) and source
+      table (assistance vs procurement). Built from int_spend_by_dim_fq and
+      intended for downstream analytics and API consumption.
+
+    columns:
+      - name: fiscal_year
+        description: Federal fiscal year derived from action_date.
+        tests:
+          - not_null
+
+      - name: fiscal_quarter
+        description: Federal fiscal quarter (1–4) derived from action_date.
+        tests:
+          - not_null
+          - accepted_values:
+              values: [1, 2, 3, 4]
+
+      - name: source_table
+        description: Indicates whether spending originates from assistance or procurement transactions.
+        tests:
+          - not_null
+          - accepted_values:
+              values: ["assistance", "procurement"]
+
+      - name: dim_type
+        description: >
+          Dimension category used for aggregation (award, awarding_agency,
+          cfda, naics, psc, recipient).
+        tests:
+          - not_null
+          - accepted_values:
+              values:
+                - award
+                - awarding_agency
+                - cfda
+                - naics
+                - psc
+                - recipient
+
+      - name: dim_value
+        description: >
+          The primary identifier for the dimension (e.g. agency name, CFDA number,
+          NAICS code, PSC code, UEI, or award key).
+        tests:
+          - not_null
+
+      - name: dim_label
+        description: >
+          Human-readable label associated with dim_value when applicable
+          (e.g. CFDA title, NAICS description, recipient name).
+      
+      - name: obligations
+        description: >
+          Total generated_pragmatic_obligations aggregated across all transactions
+          for the fiscal period, dimension, and source table.
+        tests:
+          - not_null
+
+      - name: rank
+        description: >
+          Rank of the dimension within its fiscal period, dimension type,
+          and source table, ordered by obligations descending.
+        tests:
+          - not_null

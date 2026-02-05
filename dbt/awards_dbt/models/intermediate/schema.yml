@@ -1,0 +1,41 @@
+version: 2
+
+models:
+  - name: int_spend_by_dim_fq
+    description: >
+      Long-format aggregate of spending by fiscal quarter across multiple dimensions.
+      dim_value is the primary identifier (code/key/name). dim_label is a human-friendly label.
+
+    columns:
+      - name: fiscal_year
+        tests: [not_null]
+
+      - name: fiscal_quarter
+        tests: [not_null]
+
+      - name: source_table
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['assistance', 'procurement']
+
+      - name: dim_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['award', 'awarding_agency', 'cfda', 'naics', 'psc', 'recipient']
+
+      - name: dim_value
+        tests: [not_null]
+
+      - name: obligations
+        tests: [not_null]
+
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - fiscal_year
+            - fiscal_quarter
+            - source_table
+            - dim_type
+            - dim_value
