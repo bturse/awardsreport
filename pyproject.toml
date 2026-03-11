@@ -15,3 +15,12 @@ build-backend = "poetry.core.masonry.api"
 pythonpath = [
   "src/awardsreport"
 ]
+norecursedirs = [
+  "dbt",
+  "dbt_packages",
+  "target",
+  ".git",
+  ".venv",
+  "venv",
+  "__pycache__"
+]

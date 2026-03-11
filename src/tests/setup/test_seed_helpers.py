@@ -222,12 +222,14 @@ def test_get_date_ranges():
 
 
 def test_get_awards_payload():
+    expected_columns = sorted(
+        set(seed_helpers.get_raw_columns(AssistanceTransactions))
+        | set(seed_helpers.get_raw_columns(ProcurementTransactions))
+    )
+
     expected_results = [
         {
-            "columns": list(
-                set(seed_helpers.get_raw_columns(AssistanceTransactions))
-                | set(seed_helpers.get_raw_columns(ProcurementTransactions))
-            ),
+            "columns": expected_columns,
             "file_format": "csv",
             "filters": {
                 "agencies": [{"name": "All", "tier": "toptier", "type": "awarding"}],
@@ -237,10 +239,7 @@ def test_get_awards_payload():
             },
         },
         {
-            "columns": list(
-                set(seed_helpers.get_raw_columns(AssistanceTransactions))
-                | set(seed_helpers.get_raw_columns(ProcurementTransactions))
-            ),
+            "columns": expected_columns,
             "file_format": "csv",
             "filters": {
                 "agencies": [{"name": "All", "tier": "toptier", "type": "awarding"}],
@@ -250,6 +249,7 @@ def test_get_awards_payload():
             },
         },
     ]
+
     results = seed_helpers.get_awards_payloads(
         start_date="2022-10-01", end_date="2023-10-31"
     )
@@ -273,3 +273,30 @@ def test_generate_copy_from_sql():
     # test test_cols keys exception
     with pytest.raises(ValueError):
         seed_helpers.generate_copy_from_sql("Assistance", {"invalid_key": ["foo"]})
+
+
+def test_generate_copy_from_sql_explicit_columns():
+    result = seed_helpers.generate_copy_from_sql(
+        "Assistance_1.csv",
+        columns=["action_date", "awarding_agency_name"],
+    )
+    assert (
+        result
+        == "COPY assistance_transactions(action_date, awarding_agency_name) FROM STDIN WITH (FORMAT CSV, HEADER)"
+    )
+
+
+def test_get_awards_payload_preserves_requested_column_order():
+    requested_columns = [
+        "recipient_name",
+        "action_date",
+        "awarding_agency_name",
+    ]
+
+    results = seed_helpers.get_awards_payloads(
+        start_date="2023-10-01",
+        end_date="2023-10-31",
+        columns=requested_columns,
+    )
+
+    assert results[0].columns == requested_columns

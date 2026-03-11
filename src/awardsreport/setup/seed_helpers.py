@@ -115,7 +115,9 @@ def get_date_ranges(
 
 
 def get_awards_payloads(
-    start_date: str, end_date: Optional[str] = None
+    start_date: str,
+    end_date: Optional[str] = None,
+    columns: Optional[list[str]] = None,
 ) -> list[seed_helpers_schemas.AwardsPayload]:
     """Generate payloads for USAs awards download from start_date to end_date.
 
@@ -128,14 +130,22 @@ def get_awards_payloads(
     returns list[seed_helpers_schemas.AwardsPayload]for api/v2/bulk_downloads/awards/
     """
 
-    columns = sorted(
+    default_columns = sorted(
         set(get_raw_columns(AssistanceTransactions))
         | set(get_raw_columns(ProcurementTransactions))
     )
 
+    if columns is None:
+        requested_columns = default_columns
+    else:
+        unknown = [c for c in columns if c not in default_columns]
+        if unknown:
+            raise ValueError(f"Unknown columns requested: {unknown}")
+        requested_columns = columns
+
     payloads = [
         seed_helpers_schemas.AwardsPayload(
-            columns=columns,
+            columns=requested_columns,
             filters=seed_helpers_schemas.AwardsPayloadFilters(
                 prime_award_types=PRIME_AWARD_TYPES,
                 date_type="action_date",
@@ -148,12 +158,13 @@ def get_awards_payloads(
         )
         for start_date, end_date in get_date_ranges(start_date, end_date)
     ]
-
     return payloads
 
 
 def generate_copy_from_sql(
-    fname: str, test_cols: Dict[str, List[str]] | None = None
+    fname: str,
+    test_cols: Dict[str, List[str]] | None = None,
+    columns: list[str] | None = None,
 ) -> str:
     """Generate sql COPY FROM command to insert to psql.
 
@@ -164,34 +175,42 @@ def generate_copy_from_sql(
         fname str file name to insert
         test_cols TestColsType COPY columns to simplify testing. Users should
         not need to interact with this parameter.
+        columns optional explicit column list in CSV order
 
-    return str valid postgresql COPY FROM statement to insert data from fname to appropriate table.
+    return str valid postgresql COPY FROM statement to insert data from fname
+    to appropriate table.
 
     raises
         ValueError if provided test_col keys are not exactly 'asst_cols' and 'proc_cols'.
-        ValueError if fname does not inclue 'Assistance' or 'Contract'
+        ValueError if fname does not include 'Assistance' or 'Contract'
     """
-    if test_cols:
-        valid_keys = {"asst_cols", "proc_cols"}
-        test_col_keys = test_cols.keys()
-        if set(test_col_keys) != (valid_keys):
-            raise ValueError(
-                f"invalid test_cols keys: {test_col_keys}. test_col keys must be 'asst_cols' and 'proc_cols'"
-            )
-        asst_cols = test_cols["asst_cols"]
-        proc_cols = test_cols["proc_cols"]
-    else:
-        asst_cols = get_raw_columns(AssistanceTransactions)
-        proc_cols = get_raw_columns(ProcurementTransactions)
-
     if "Assistance" in fname:
-        cols = ", ".join(asst_cols)
         table_name = "assistance_transactions"
+        default_cols = get_raw_columns(AssistanceTransactions)
     elif "Contract" in fname:
-        cols = ", ".join(proc_cols)
         table_name = "procurement_transactions"
+        default_cols = get_raw_columns(ProcurementTransactions)
     else:
         raise ValueError(
             f"invalid fname: {fname}. fname must include substring 'Assistance' or 'Contract'"
         )
+
+    if test_cols:
+        valid_keys = {"asst_cols", "proc_cols"}
+        test_col_keys = test_cols.keys()
+        if set(test_col_keys) != valid_keys:
+            raise ValueError(
+                f"invalid test_cols keys: {test_col_keys}. test_col keys must be 'asst_cols' and 'proc_cols'"
+            )
+        cols_list = (
+            test_cols["asst_cols"]
+            if table_name == "assistance_transactions"
+            else test_cols["proc_cols"]
+        )
+    elif columns is not None:
+        cols_list = columns
+    else:
+        cols_list = default_cols
+
+    cols = ", ".join(cols_list)
     return f"COPY {table_name}({cols}) FROM STDIN WITH (FORMAT CSV, HEADER)"
