@@ -1,6 +1,7 @@
 import argparse
 import logging
 import requests
+import csv
 from time import sleep
 from zipfile import ZipFile
 from io import BytesIO
@@ -47,7 +48,11 @@ def _payload_for_log(payload_dict: dict[str, Any]) -> dict[str, Any]:
     return d
 
 
-def awards_usas_to_sql(start_date: str, end_date: Optional[str] = None):
+def awards_usas_to_sql(
+    start_date: str,
+    end_date: Optional[str] = None,
+    selected_cols: Optional[list[str]] = None,
+):
     def get_status(status_url):
         logger.info(f"GET status: {status_url}")
         resp = requests.get(status_url, headers=USER_AGENT, timeout=60)
@@ -56,7 +61,7 @@ def awards_usas_to_sql(start_date: str, end_date: Optional[str] = None):
         logger.info(f"status response: {j}")
         return j["status"]
 
-    payloads = get_awards_payloads(start_date, end_date)
+    payloads = get_awards_payloads(start_date, end_date, columns=selected_cols)
     logger.info("Starting seed run")
     logger.info(f"payload count: {len(payloads)}")
     logger.info(
@@ -128,10 +133,16 @@ def awards_usas_to_sql(start_date: str, end_date: Optional[str] = None):
             logger.info(f"csv files: {files}")
 
             for csv_name in files:
-                copy_cmd = generate_copy_from_sql(csv_name)
-                logger.info(f"copy_cmd for {csv_name}: {copy_cmd}")
+                with open(
+                    f"{raw_data}/{csv_name}", "r", encoding="utf-8", newline=""
+                ) as f:
+                    reader = csv.reader(f)
+                    header = next(reader)
+                    f.seek(0)
 
-                with open(f"{raw_data}/{csv_name}", "r") as f:
+                    copy_cmd = generate_copy_from_sql(csv_name, columns=header)
+                    logger.info(f"copy_cmd for {csv_name}: {copy_cmd}")
+
                     cursor.copy_expert(copy_cmd, f)
                     conn.commit()
                     logger.info(f"committed {csv_name}")
@@ -155,5 +166,14 @@ if __name__ == "__main__":
         help="YYYY-MM-DD Filter transactions by action_date <= (default = today).",
         required=False,
     )
+    parser.add_argument(
+        "--cols",
+        type=str,
+        required=False,
+        help="Comma-separated list of USAspending columns to request (optional). Example: action_date,awarding_agency_name,cfda_number",
+    )
     args = parser.parse_args()
-    awards_usas_to_sql(args.s, args.e)
+    selected_cols = None
+    if args.cols:
+        selected_cols = [c.strip() for c in args.cols.split(",") if c.strip()]
+    awards_usas_to_sql(args.s, args.e, selected_cols)
